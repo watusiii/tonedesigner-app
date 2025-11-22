@@ -227,6 +227,124 @@ header h1 {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
+   CODE OUTPUT PANEL - DARK CONTRAST DESIGN
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+#code-output-panel {
+    position: fixed;
+    bottom: var(--keyboard-height);
+    left: 0;
+    right: 0;
+    background-color: var(--color-background-surface);
+    border-top: var(--border-width-thin) solid var(--color-pure-black);
+    z-index: 999;
+    transition: transform var(--transition-base);
+}
+
+#code-output-panel.collapsed {
+    transform: translateY(calc(100% - 48px));
+}
+
+/* Code Toggle Tab */
+.code-toggle-tab {
+    height: 48px;
+    background-color: var(--color-background-surface);
+    border-bottom: var(--border-width-thin) solid var(--color-pure-black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    user-select: none;
+}
+
+.code-toggle-tab:hover {
+    background-color: var(--color-gray-100);
+}
+
+.code-toggle-text {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wider);
+    color: var(--color-text-primary);
+}
+
+.code-toggle-icon {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    transition: transform var(--transition-fast);
+}
+
+#code-output-panel:not(.collapsed) .code-toggle-icon {
+    transform: rotate(180deg);
+}
+
+/* Code Panel Content */
+.code-panel-content {
+    padding: var(--space-6);
+    background-color: var(--color-background-surface);
+}
+
+.code-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+.code-panel-title {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wider);
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.copy-code-button {
+    background-color: var(--color-te-orange);
+    border: var(--border-width-base) solid var(--color-pure-black);
+    border-radius: var(--border-radius-base);
+    color: var(--color-pure-white);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+    padding: var(--space-2) var(--space-4);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.copy-code-button:hover {
+    background-color: var(--color-te-orange-dark);
+    transform: translateY(-1px);
+}
+
+.copy-code-button:active {
+    transform: translateY(0);
+}
+
+#code-display {
+    width: 100%;
+    height: 300px;
+    background-color: var(--color-background-surface);
+    border: var(--border-width-thin) solid var(--color-pure-black);
+    border-radius: var(--border-radius-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+    padding: var(--space-4);
+    resize: vertical;
+    outline: none;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    MINIMALIST SCROLLBAR STYLING - T.E. AESTHETIC
    ═══════════════════════════════════════════════════════════════════════════════ */
 

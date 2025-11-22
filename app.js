@@ -145,6 +145,15 @@ async function setupSynth() {
         // Setup test note triggering
         setupTestNoteTrigger();
         
+        // Setup code panel toggle functionality
+        setupCodePanelToggle();
+        
+        // Setup code copy functionality
+        setupCopyCode();
+        
+        // Initial code display update
+        updateCodeDisplay();
+        
         console.log('T.E. Grid Synthesis: Synthesizer platform initialized');
         
     } catch (error) {
@@ -778,6 +787,9 @@ function setupKnobInteraction() {
                 
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
+                
+                // Update code display in real-time
+                updateCodeDisplay();
             }
         });
         
@@ -899,6 +911,9 @@ function setupSelectorInteraction() {
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
                 
+                // Update code display in real-time
+                updateCodeDisplay();
+                
                 console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}`);
             }
         });
@@ -927,6 +942,9 @@ function setupSelectorInteraction() {
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
                 
+                // Update code display in real-time
+                updateCodeDisplay();
+                
                 console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}`);
             }
         });
@@ -954,6 +972,9 @@ function setupSelectorInteraction() {
                 
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
+                
+                // Update code display in real-time
+                updateCodeDisplay();
                 
                 console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}`);
             }
@@ -998,6 +1019,7 @@ function setupTestNoteTrigger() {
 /**
  * Generate Production-Ready JavaScript Code
  * Iterates through synthNodes array and outputs clean Tone.js instantiation and connection code
+ * Following the structured three-block approach: Instantiation, Patching, Triggering
  * 
  * @returns {string} Clean, copy-pasteable JavaScript code
  */
@@ -1008,107 +1030,181 @@ function generateCode() {
 // Initialize Tone.js context
 await Tone.start();
 
-// Create oscillators
+// ═══════════════════════════════════════════════════════════════
+// INSTANTIATION BLOCK - Module Declarations
+// ═══════════════════════════════════════════════════════════════
+
 `;
 
-    // Generate oscillator code
+    // Generate oscillator declarations
     synthNodes
         .filter(node => node.type === "OmniOscillator")
         .forEach(node => {
-            code += `const ${node.id.replace('-', '')} = new Tone.Oscillator({
-    frequency: ${node.parameters.frequency},
+            const id = node.id.replace('-', '');
+            code += `const ${id} = new Tone.Oscillator({
     type: "${node.parameters.waveform}",
+    frequency: ${node.parameters.frequency},
     detune: ${node.parameters.detune}
-});
+}).start();
+
 `;
         });
 
-    code += `
-// Create filters
-`;
-
-    // Generate filter code
+    // Generate filter declarations
     synthNodes
         .filter(node => node.type === "Filter")
         .forEach(node => {
-            code += `const ${node.id.replace('-', '')} = new Tone.Filter({
-    frequency: ${node.parameters.frequency},
+            const id = node.id.replace('-', '');
+            code += `const ${id} = new Tone.Filter({
     type: "${node.parameters.type}",
+    frequency: ${node.parameters.frequency},
     Q: ${node.parameters.Q}
 });
+
 `;
         });
 
-    code += `
-// Create envelopes
-`;
-
-    // Generate envelope code
+    // Generate envelope declarations
     synthNodes
         .filter(node => node.type === "AmplitudeEnvelope")
         .forEach(node => {
-            code += `const ${node.id.replace('-', '')} = new Tone.AmplitudeEnvelope({
+            const id = node.id.replace('-', '');
+            code += `const ${id} = new Tone.AmplitudeEnvelope({
     attack: ${node.parameters.attack},
     decay: ${node.parameters.decay},
     sustain: ${node.parameters.sustain},
     release: ${node.parameters.release}
 });
+
 `;
         });
 
-    code += `
-// Create LFOs
-`;
-
-    // Generate LFO code
+    // Generate LFO declarations
     synthNodes
         .filter(node => node.type === "LFO")
         .forEach(node => {
-            code += `const ${node.id.replace('-', '')} = new Tone.LFO({
-    frequency: ${node.parameters.frequency},
+            const id = node.id.replace('-', '');
+            code += `const ${id} = new Tone.LFO({
     type: "${node.parameters.type}",
+    frequency: ${node.parameters.frequency},
     min: ${node.parameters.min},
     max: ${node.parameters.max}
-});
+}).start();
+
 `;
         });
 
-    code += `
-// Create effects
-`;
-
-    // Generate reverb code
+    // Generate reverb declarations
     synthNodes
         .filter(node => node.type === "Reverb")
         .forEach(node => {
-            code += `const ${node.id.replace('-', '')} = new Tone.Reverb({
+            const id = node.id.replace('-', '');
+            code += `const ${id} = new Tone.Reverb({
     decay: ${node.parameters.decay},
     wet: ${node.parameters.wet}
 });
+
 `;
         });
 
-    code += `
-// Connect the signal chain
+    code += `// ═══════════════════════════════════════════════════════════════
+// PATCHING BLOCK - Signal Routing
+// ═══════════════════════════════════════════════════════════════
+
+// Audio Signal Chain: VCO → VCF → ENV → REVERB → Destination
 oscillator1.connect(filter1);
 filter1.connect(envelope1);
 envelope1.connect(reverb1);
 reverb1.toDestination();
 
-// Connect modulation routing
+// Modulation Routing: LFO → VCF Frequency
 lfo1.connect(filter1.frequency);
 
-// Start oscillators and LFOs
-oscillator1.start();
-lfo1.start();
+// ═══════════════════════════════════════════════════════════════
+// TRIGGERING BLOCK - Play Function
+// ═══════════════════════════════════════════════════════════════
 
-// Trigger a test note (envelope for 1 second)
-envelope1.triggerAttackRelease("1n", Tone.now());
+const playSynth = (note = "C4", duration = "4n") => {
+    // Set oscillator frequency to the desired note
+    oscillator1.frequency.setValueAtTime(Tone.Frequency(note).toFrequency(), Tone.now());
+    
+    // Trigger the envelope to play the note
+    envelope1.triggerAttackRelease(duration, Tone.now());
+};
 
-// Your synthesizer is ready!
+// Example usage:
+// playSynth("C4", "8n");  // Play C4 for an eighth note
+// playSynth("A3", "2n");  // Play A3 for a half note
+
+// Your T.E. Grid synthesizer is ready!
+console.log("🎛️ T.E. Grid Synthesis: Synthesizer loaded and ready");
 `;
 
     return code;
+}
+
+/**
+ * Update Code Display
+ * Updates the code display panel with current synthesizer state
+ */
+function updateCodeDisplay() {
+    const codeDisplay = document.getElementById('code-display');
+    if (codeDisplay) {
+        const code = generateCode();
+        codeDisplay.value = code;
+    }
+}
+
+/**
+ * Setup Code Panel Toggle Functionality
+ * Implements collapsible code panel with smooth animations
+ */
+function setupCodePanelToggle() {
+    const codePanel = document.getElementById('code-output-panel');
+    const toggleTab = document.getElementById('code-toggle-tab');
+    
+    if (codePanel && toggleTab) {
+        toggleTab.addEventListener('click', () => {
+            codePanel.classList.toggle('collapsed');
+            
+            console.log('T.E. Grid Synthesis: Code panel toggled');
+        });
+    }
+}
+
+/**
+ * Setup Copy Code Functionality
+ * Implements clipboard copy for the generated code
+ */
+function setupCopyCode() {
+    const copyButton = document.getElementById('copy-button');
+    const codeDisplay = document.getElementById('code-display');
+    
+    if (copyButton && codeDisplay) {
+        copyButton.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(codeDisplay.value);
+                
+                // Visual feedback
+                const originalText = copyButton.textContent;
+                copyButton.textContent = 'COPIED!';
+                copyButton.style.backgroundColor = 'var(--color-te-green)';
+                
+                setTimeout(() => {
+                    copyButton.textContent = originalText;
+                    copyButton.style.backgroundColor = '';
+                }, 1000);
+                
+                console.log('T.E. Grid Synthesis: Code copied to clipboard');
+            } catch (err) {
+                console.error('T.E. Grid Synthesis: Failed to copy code', err);
+                
+                // Fallback: select all text for manual copy
+                codeDisplay.select();
+                codeDisplay.setSelectionRange(0, 99999);
+            }
+        });
+    }
 }
 
 /**
