@@ -330,8 +330,8 @@ header h1 {
     width: 100%;
     height: 300px;
     background-color: var(--color-background-surface);
-    border: var(--border-width-thin) solid var(--color-pure-black);
-    border-radius: var(--border-radius-base);
+    border: none;
+    border-radius: 0;
     color: var(--color-text-primary);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-sm);
@@ -411,6 +411,85 @@ header h1 {
 
 .test-note-button:active {
     transform: translateY(0);
+}
+
+/* Virtual Keyboard Styling - Simple Grid Approach */
+.virtual-keyboard {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    padding: var(--space-2);
+}
+
+.keyboard-row {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+}
+
+.key-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.white-key {
+    background-color: var(--color-background-surface);
+    border: var(--border-width-thin) solid var(--color-pure-black);
+    border-radius: var(--border-radius-base);
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--transition-fast);
+}
+
+.white-key:hover {
+    background-color: var(--color-gray-100);
+}
+
+.white-key:active,
+.white-key.pressed {
+    background-color: var(--color-gray-300);
+    transform: scale(0.95);
+}
+
+.black-key {
+    background-color: var(--color-pure-black);
+    border: var(--border-width-thin) solid var(--color-pure-black);
+    border-radius: var(--border-radius-full);
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family-mono);
+    font-size: 8px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-pure-white);
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--transition-fast);
+}
+
+.black-key:hover {
+    background-color: var(--color-gray-800);
+}
+
+.black-key:active,
+.black-key.pressed {
+    background-color: var(--color-gray-600);
+    transform: scale(0.9);
 }
 
 /* Modules Container - Full width layout */

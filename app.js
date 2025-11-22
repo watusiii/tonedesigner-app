@@ -142,8 +142,8 @@ async function setupSynth() {
         // Setup selector functionality
         setupSelectorInteraction();
         
-        // Setup test note triggering
-        setupTestNoteTrigger();
+        // Setup virtual keyboard
+        setupVirtualKeyboard();
         
         // Setup code panel toggle functionality
         setupCodePanelToggle();
@@ -658,7 +658,39 @@ function initializeModules() {
         const keyboardContainer = document.createElement('div');
         keyboardContainer.className = 'keyboard-container';
         keyboardContainer.innerHTML = `
-            <button id="test-note-trigger" class="test-note-button">TEST NOTE</button>
+            <div class="virtual-keyboard">
+                <div class="keyboard-row">
+                    <div class="key-group">
+                        <div class="key white-key" data-note="C3">C</div>
+                        <div class="key black-key" data-note="C#3">C#</div>
+                    </div>
+                    <div class="key-group">
+                        <div class="key white-key" data-note="D3">D</div>
+                        <div class="key black-key" data-note="D#3">D#</div>
+                    </div>
+                    <div class="key-group">
+                        <div class="key white-key" data-note="E3">E</div>
+                    </div>
+                    <div class="key-group">
+                        <div class="key white-key" data-note="F3">F</div>
+                        <div class="key black-key" data-note="F#3">F#</div>
+                    </div>
+                    <div class="key-group">
+                        <div class="key white-key" data-note="G3">G</div>
+                        <div class="key black-key" data-note="G#3">G#</div>
+                    </div>
+                    <div class="key-group">
+                        <div class="key white-key" data-note="A3">A</div>
+                        <div class="key black-key" data-note="A#3">A#</div>
+                    </div>
+                    <div class="key-group">
+                        <div class="key white-key" data-note="B3">B</div>
+                    </div>
+                    <div class="key-group">
+                        <div class="key white-key" data-note="C4">C</div>
+                    </div>
+                </div>
+            </div>
         `;
         document.body.appendChild(keyboardContainer);
         
@@ -983,31 +1015,64 @@ function setupSelectorInteraction() {
 }
 
 /**
- * Setup Test Note Trigger
- * Adds event listener for the Test Note button to trigger envelope
+ * Play Key Function
+ * Triggers a note with the synthesizer
+ * 
+ * @param {string} note - The musical note to play (e.g., "C3", "F#3")
  */
-function setupTestNoteTrigger() {
-    const testNoteButton = document.getElementById('test-note-trigger');
-    
-    if (testNoteButton) {
-        testNoteButton.addEventListener('click', () => {
-            if (envelopeToneObject) {
-                // Trigger the envelope for 1 second duration
-                // Since the VCO is continuously running, we just trigger the envelope
-                envelopeToneObject.triggerAttackRelease("1n", Tone.now());
-                
-                console.log('T.E. Grid Synthesis: Test note triggered');
-                
-                // Visual feedback - briefly highlight the button
-                testNoteButton.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    testNoteButton.style.transform = '';
-                }, 100);
-            }
-        });
+function playKey(note) {
+    if (vco1ToneObject && envelopeToneObject) {
+        // Set the oscillator frequency to the note
+        vco1ToneObject.frequency.setValueAtTime(note, Tone.now());
         
-        console.log('T.E. Grid Synthesis: Test note trigger setup complete');
+        // Trigger the envelope with a short duration
+        envelopeToneObject.triggerAttackRelease("8n", Tone.now());
+        
+        console.log(`T.E. Grid Synthesis: Playing note ${note}`);
     }
+}
+
+/**
+ * Setup Virtual Keyboard
+ * Adds event listeners for all keyboard keys
+ */
+function setupVirtualKeyboard() {
+    const keys = document.querySelectorAll('.key[data-note]');
+    
+    keys.forEach(key => {
+        const note = key.dataset.note;
+        
+        if (note) {
+            // Mouse events
+            key.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                key.classList.add('pressed');
+                playKey(note);
+            });
+            
+            key.addEventListener('mouseup', () => {
+                key.classList.remove('pressed');
+            });
+            
+            key.addEventListener('mouseleave', () => {
+                key.classList.remove('pressed');
+            });
+            
+            // Touch events for mobile
+            key.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                key.classList.add('pressed');
+                playKey(note);
+            });
+            
+            key.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                key.classList.remove('pressed');
+            });
+        }
+    });
+    
+    console.log('T.E. Grid Synthesis: Virtual keyboard setup complete');
 }
 
 /**
@@ -1024,11 +1089,7 @@ function setupTestNoteTrigger() {
  * @returns {string} Clean, copy-pasteable JavaScript code
  */
 function generateCode() {
-    let code = `// Generated by T.E. Grid Synthesis
-// Clean, production-ready Tone.js code
-
-// Initialize Tone.js context
-await Tone.start();
+    let code = `await Tone.start();
 
 // ═══════════════════════════════════════════════════════════════
 // INSTANTIATION BLOCK - Module Declarations
