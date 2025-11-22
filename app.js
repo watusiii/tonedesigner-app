@@ -154,6 +154,9 @@ async function setupSynth() {
         // Initial code display update
         updateCodeDisplay();
         
+        // Initialize P5 Canvas Manager
+        initializeP5Manager();
+        
         console.log('T.E. Grid Synthesis: Synthesizer platform initialized');
         
     } catch (error) {
@@ -302,6 +305,234 @@ let reverbToneObject;
  * Used for code generation and module management
  */
 let synthNodes = [];
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * P5 WAVE VISUALIZER SYSTEM - MODULAR CANVAS MANAGEMENT
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * P5 Canvas Manager - Handles creation and management of P5.js instances
+ * This class provides a modular approach to creating wave visualizers
+ */
+class P5CanvasManager {
+    constructor() {
+        this.canvases = new Map();
+    }
+    
+    /**
+     * Create a new P5 canvas for wave visualization
+     * @param {string} containerId - The ID of the container element
+     * @param {string} waveType - The type of wave to visualize
+     * @param {Object} options - Configuration options
+     */
+    createWaveCanvas(containerId, waveType, options = {}) {
+        const container = document.getElementById(containerId) || document.querySelector(`[data-wave-type="${waveType}"]`);
+        if (!container) {
+            console.error(`P5 Canvas Manager: Container not found for ${containerId}`);
+            return null;
+        }
+        
+        // Default options
+        const config = {
+            amplitude: options.amplitude || 50,
+            frequency: options.frequency || 1,
+            strokeWeight: options.strokeWeight || 2,
+            strokeColor: options.strokeColor || '#000000',
+            backgroundColor: options.backgroundColor || '#ffffff',
+            ...options
+        };
+        
+        const sketch = (p) => {
+            let canvasWidth, canvasHeight;
+            
+            p.setup = () => {
+                // Get container dimensions
+                const rect = container.getBoundingClientRect();
+                canvasWidth = rect.width;
+                canvasHeight = rect.height;
+                
+                // Create canvas and attach to container
+                const canvas = p.createCanvas(canvasWidth, canvasHeight);
+                canvas.parent(container);
+                
+                // Clear any existing content
+                container.innerHTML = '';
+                container.appendChild(canvas.canvas);
+            };
+            
+            p.draw = () => {
+                p.background(config.backgroundColor);
+                p.stroke(config.strokeColor);
+                p.strokeWeight(config.strokeWeight);
+                p.noFill();
+                
+                // Draw waveform based on type
+                this.drawWaveform(p, waveType, canvasWidth, canvasHeight, config);
+            };
+            
+            // Handle window resize
+            p.windowResized = () => {
+                const rect = container.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    canvasWidth = rect.width;
+                    canvasHeight = rect.height;
+                    p.resizeCanvas(canvasWidth, canvasHeight);
+                }
+            };
+        };
+        
+        const p5Instance = new p5(sketch);
+        this.canvases.set(containerId, {
+            instance: p5Instance,
+            waveType: waveType,
+            config: config
+        });
+        
+        return p5Instance;
+    }
+    
+    /**
+     * Draw different waveform types
+     * @param {Object} p - P5.js instance
+     * @param {string} waveType - Type of wave to draw
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
+     * @param {Object} config - Configuration options
+     */
+    drawWaveform(p, waveType, width, height, config) {
+        const centerY = height / 2;
+        const amplitude = config.amplitude * (height / 100); // Scale amplitude to canvas height
+        const frequency = config.frequency;
+        
+        p.beginShape();
+        
+        for (let x = 0; x <= width; x += 2) {
+            let y;
+            const t = p.map(x, 0, width, 0, p.TWO_PI * frequency);
+            
+            switch (waveType) {
+                case 'sine':
+                    y = centerY + amplitude * p.sin(t + p.frameCount * 0.02);
+                    break;
+                case 'square':
+                    y = centerY + amplitude * (p.sin(t + p.frameCount * 0.02) > 0 ? 1 : -1);
+                    break;
+                case 'sawtooth':
+                    y = centerY + amplitude * (2 * ((t + p.frameCount * 0.02) % p.TWO_PI) / p.TWO_PI - 1);
+                    break;
+                case 'triangle':
+                    const phase = (t + p.frameCount * 0.02) % p.TWO_PI;
+                    if (phase < p.PI) {
+                        y = centerY + amplitude * (2 * phase / p.PI - 1);
+                    } else {
+                        y = centerY + amplitude * (3 - 2 * phase / p.PI);
+                    }
+                    break;
+                default:
+                    y = centerY; // Flat line for unknown types
+            }
+            
+            p.vertex(x, y);
+        }
+        
+        p.endShape();
+    }
+    
+    /**
+     * Update waveform configuration
+     * @param {string} containerId - Container ID
+     * @param {Object} newConfig - New configuration options
+     */
+    updateWaveConfig(containerId, newConfig) {
+        const canvas = this.canvases.get(containerId);
+        if (canvas) {
+            Object.assign(canvas.config, newConfig);
+        }
+    }
+    
+    /**
+     * Update waveform type
+     * @param {string} containerId - Container ID
+     * @param {string} newWaveType - New wave type
+     */
+    updateWaveType(containerId, newWaveType) {
+        const canvas = this.canvases.get(containerId);
+        if (canvas) {
+            canvas.waveType = newWaveType;
+        }
+    }
+    
+    /**
+     * Remove a canvas instance
+     * @param {string} containerId - Container ID
+     */
+    removeCanvas(containerId) {
+        const canvas = this.canvases.get(containerId);
+        if (canvas && canvas.instance) {
+            canvas.instance.remove();
+            this.canvases.delete(containerId);
+        }
+    }
+    
+    /**
+     * Clean up all canvases
+     */
+    cleanup() {
+        this.canvases.forEach((canvas) => {
+            if (canvas.instance) {
+                canvas.instance.remove();
+            }
+        });
+        this.canvases.clear();
+    }
+}
+
+/**
+ * Global P5 Canvas Manager Instance
+ */
+let p5Manager;
+
+/**
+ * Initialize P5 Canvas Manager and create wave visualizers
+ * Sets up responsive P5.js canvases for all wave visual elements
+ */
+function initializeP5Manager() {
+    // Create new P5 canvas manager
+    p5Manager = new P5CanvasManager();
+    
+    // Wait for DOM to be fully rendered before creating canvases
+    setTimeout(() => {
+        // Find all wave visual elements and create P5 canvases
+        const waveVisuals = document.querySelectorAll('.wave-visual');
+        
+        waveVisuals.forEach((visual, index) => {
+            const waveType = visual.dataset.waveType;
+            const containerId = `wave-visual-${index}`;
+            
+            // Set an ID for the container if it doesn't have one
+            if (!visual.id) {
+                visual.id = containerId;
+            }
+            
+            // Create P5 canvas for this wave visual
+            if (waveType && visual.id) {
+                p5Manager.createWaveCanvas(visual.id, waveType, {
+                    amplitude: 45, // Slightly smaller than container
+                    frequency: 2.5, // Multiple cycles visible
+                    strokeWeight: 1.5,
+                    strokeColor: '#000000',
+                    backgroundColor: '#ffffff'
+                });
+                
+                console.log(`T.E. Grid Synthesis: Created P5 canvas for ${waveType} wave (${visual.id})`);
+            }
+        });
+        
+        console.log('T.E. Grid Synthesis: P5 Canvas Manager initialized with wave visualizers');
+    }, 100); // Small delay to ensure DOM is ready
+}
 
 /**
  * Render Oscillator Module
@@ -943,6 +1174,20 @@ function setupSelectorInteraction() {
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
                 
+                // Update P5 wave visual if it exists
+                if (p5Manager && param === 'waveform') {
+                    const waveVisual = moduleElement.querySelector('.wave-visual');
+                    if (waveVisual && waveVisual.id) {
+                        // Update wave visual data attribute
+                        waveVisual.dataset.waveType = newValue;
+                        
+                        // Update P5 canvas wave type
+                        p5Manager.updateWaveType(waveVisual.id, newValue);
+                        
+                        console.log(`T.E. Grid Synthesis: Updated P5 wave visual to ${newValue}`);
+                    }
+                }
+                
                 // Update code display in real-time
                 updateCodeDisplay();
                 
@@ -1004,6 +1249,20 @@ function setupSelectorInteraction() {
                 
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
+                
+                // Update P5 wave visual if it exists (for LFO type changes)
+                if (p5Manager && param === 'type') {
+                    const waveVisual = moduleElement.querySelector('.wave-visual');
+                    if (waveVisual && waveVisual.id) {
+                        // Update wave visual data attribute
+                        waveVisual.dataset.waveType = newValue;
+                        
+                        // Update P5 canvas wave type
+                        p5Manager.updateWaveType(waveVisual.id, newValue);
+                        
+                        console.log(`T.E. Grid Synthesis: Updated LFO P5 wave visual to ${newValue}`);
+                    }
+                }
                 
                 // Update code display in real-time
                 updateCodeDisplay();

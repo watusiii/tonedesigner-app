@@ -6,13 +6,13 @@
     /* ───────────────────────────────────────────────────────────────────────────
        COLOR PALETTE - Inspired by Teenage Engineering & Nothing aesthetics
        ─────────────────────────────────────────────────────────────────────────── */
-    
+
     /* Base Colors */
     --color-pure-white: #ffffff;
     --color-pure-black: #000000;
     --color-background-main: #f0f0f0;
     --color-background-surface: #ffffff;
-    
+
     /* Grays - Carefully balanced for readability and hierarchy */
     --color-gray-100: #f8f8f8;
     --color-gray-200: #e8e8e8;
@@ -23,155 +23,201 @@
     --color-gray-700: #404040;
     --color-gray-800: #202020;
     --color-gray-900: #101010;
-    
+
     /* Text Colors */
     --color-text-primary: var(--color-pure-black);
     --color-text-secondary: var(--color-gray-600);
     --color-text-tertiary: var(--color-gray-500);
-    
+
     /* Teenage Engineering Inspired Color Scheme */
-    --color-te-orange: #ff6600;        /* Classic TE orange */
-    --color-te-orange-dark: #cc5200;   /* Darker orange for indicators */
-    --color-te-yellow: #ffcc00;        /* TE yellow for audio signals */
-    --color-te-yellow-dark: #e6b800;   /* Darker yellow */
-    --color-te-blue: #0066ff;          /* Control signal blue */
-    --color-te-blue-dark: #0052cc;     /* Darker blue */
-    --color-te-red: #ff3366;           /* Error/warning red */
-    --color-te-red-dark: #cc1a4d;      /* Darker red */
-    --color-te-green: #00cc66;         /* Success green */
-    --color-te-green-dark: #00a352;    /* Darker green */
-    --color-te-purple: #9966ff;        /* LFO/utility purple */
-    --color-te-purple-dark: #7a4dcc;   /* Darker purple */
-    --color-te-pink: #ff6699;          /* Effects/reverb pink */
-    --color-te-pink-dark: #cc4d77;     /* Darker pink */
-    
+    --color-te-orange: #ff6600;
+    /* Classic TE orange */
+    --color-te-orange-dark: #cc5200;
+    /* Darker orange for indicators */
+    --color-te-yellow: #ffcc00;
+    /* TE yellow for audio signals */
+    --color-te-yellow-dark: #e6b800;
+    /* Darker yellow */
+    --color-te-blue: #0066ff;
+    /* Control signal blue */
+    --color-te-blue-dark: #0052cc;
+    /* Darker blue */
+    --color-te-red: #ff3366;
+    /* Error/warning red */
+    --color-te-red-dark: #cc1a4d;
+    /* Darker red */
+    --color-te-green: #00cc66;
+    /* Success green */
+    --color-te-green-dark: #00a352;
+    /* Darker green */
+    --color-te-purple: #9966ff;
+    /* LFO/utility purple */
+    --color-te-purple-dark: #7a4dcc;
+    /* Darker purple */
+    --color-te-pink: #ff6699;
+    /* Effects/reverb pink */
+    --color-te-pink-dark: #cc4d77;
+    /* Darker pink */
+
     /* Legacy accent colors (mapped to TE scheme) */
     --color-accent-primary: var(--color-te-orange);
     --color-accent-secondary: var(--color-te-blue);
     --color-accent-success: var(--color-te-green);
     --color-accent-warning: var(--color-te-yellow);
     --color-accent-error: var(--color-te-red);
-    
+
     /* Border Colors - Dark Gray Solid Lines */
     --color-border-light: var(--color-gray-600);
     --color-border-medium: var(--color-gray-700);
     --color-border-dark: var(--color-gray-800);
-    
+
     /* Grid System */
     --color-grid-dot: var(--color-gray-300);
-    
+
     /* ───────────────────────────────────────────────────────────────────────────
        CORNER PORT POSITIONING - Standardized positions for all corner elements
        ─────────────────────────────────────────────────────────────────────────── */
-    
-    --corner-port-distance: var(--space-2);     /* Standard distance from edges */
-    --corner-port-secondary-top: var(--space-5); /* For secondary ports like gate */
-    
+
+    --corner-port-distance: var(--space-2);
+    /* Standard distance from edges */
+    --corner-port-secondary-top: var(--space-5);
+    /* For secondary ports like gate */
+
     /* ───────────────────────────────────────────────────────────────────────────
        PATCH PORT SIZING - Standardized sizes for different port types
        ─────────────────────────────────────────────────────────────────────────── */
-    
-    --patch-port-size: 12px;                    /* Standard audio/CV port size */
-    --gate-port-size: 12px;                     /* Gate port size (same as standard) */
-    
+
+    --patch-port-size: 12px;
+    /* Standard audio/CV port size */
+    --gate-port-size: 12px;
+    /* Gate port size (same as standard) */
+
     /* ───────────────────────────────────────────────────────────────────────────
        WAVE VISUAL SIZING - Standardized dimensions for waveform visualizations
        ─────────────────────────────────────────────────────────────────────────── */
-    
-    --wave-visual-width: 60px;                  /* Standard width for wave displays */
-    --wave-visual-height: 30px;                 /* Standard height for wave displays */
-    
+
+    --wave-visual-width: 60px;
+    /* Standard width for wave displays */
+    --wave-visual-height: 30px;
+    /* Standard height for wave displays */
+
     /* ───────────────────────────────────────────────────────────────────────────
        KEYBOARD AREA SIZING - Standardized dimensions for bottom keyboard section
        ─────────────────────────────────────────────────────────────────────────── */
-    
-    --keyboard-height: 80px;                    /* Height of sticky keyboard area */
-    
+
+    --keyboard-height: 80px;
+    /* Height of sticky keyboard area */
+
     /* ───────────────────────────────────────────────────────────────────────────
        SPACING SCALE - 8px base unit for perfect harmony
        ─────────────────────────────────────────────────────────────────────────── */
-    
+
     --space-0: 0;
-    --space-1: 0.125rem;  /* 2px */
-    --space-2: 0.25rem;   /* 4px */
-    --space-3: 0.5rem;    /* 8px */
-    --space-4: 0.75rem;   /* 12px */
-    --space-5: 1rem;      /* 16px */
-    --space-6: 1.25rem;   /* 20px */
-    --space-7: 1.5rem;    /* 24px */
-    --space-8: 2rem;      /* 32px */
-    --space-10: 2.5rem;   /* 40px */
-    --space-12: 3rem;     /* 48px */
-    --space-16: 4rem;     /* 64px */
-    --space-20: 5rem;     /* 80px */
-    --space-24: 6rem;     /* 96px */
-    
+    --space-1: 0.125rem;
+    /* 2px */
+    --space-2: 0.25rem;
+    /* 4px */
+    --space-3: 0.5rem;
+    /* 8px */
+    --space-4: 0.75rem;
+    /* 12px */
+    --space-5: 1rem;
+    /* 16px */
+    --space-6: 1.25rem;
+    /* 20px */
+    --space-7: 1.5rem;
+    /* 24px */
+    --space-8: 2rem;
+    /* 32px */
+    --space-10: 2.5rem;
+    /* 40px */
+    --space-12: 3rem;
+    /* 48px */
+    --space-16: 4rem;
+    /* 64px */
+    --space-20: 5rem;
+    /* 80px */
+    --space-24: 6rem;
+    /* 96px */
+
     /* ───────────────────────────────────────────────────────────────────────────
        TYPOGRAPHY SCALE - Modular scale for visual hierarchy
        ─────────────────────────────────────────────────────────────────────────── */
-    
+
     --font-family-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     --font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    
-    --font-size-xs: 0.75rem;    /* 12px */
-    --font-size-sm: 0.875rem;   /* 14px */
-    --font-size-base: 1rem;     /* 16px */
-    --font-size-lg: 1.125rem;   /* 18px */
-    --font-size-xl: 1.25rem;    /* 20px */
-    --font-size-2xl: 1.5rem;    /* 24px */
-    --font-size-3xl: 1.875rem;  /* 30px */
-    --font-size-4xl: 2.25rem;   /* 36px */
-    
+
+    --font-size-xs: 0.75rem;
+    /* 12px */
+    --font-size-sm: 0.875rem;
+    /* 14px */
+    --font-size-base: 1rem;
+    /* 16px */
+    --font-size-lg: 1.125rem;
+    /* 18px */
+    --font-size-xl: 1.25rem;
+    /* 20px */
+    --font-size-2xl: 1.5rem;
+    /* 24px */
+    --font-size-3xl: 1.875rem;
+    /* 30px */
+    --font-size-4xl: 2.25rem;
+    /* 36px */
+
     --font-weight-light: 300;
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
-    
+
     --line-height-tight: 1.25;
     --line-height-normal: 1.5;
     --line-height-relaxed: 1.75;
-    
+
     --letter-spacing-tight: -0.025em;
     --letter-spacing-normal: 0;
     --letter-spacing-wide: 0.025em;
     --letter-spacing-wider: 0.05em;
     --letter-spacing-widest: 0.1em;
-    
+
     /* ───────────────────────────────────────────────────────────────────────────
        LAYOUT & SIZING - Consistent dimensions and constraints
        ─────────────────────────────────────────────────────────────────────────── */
-    
+
     --border-radius-none: 0;
-    --border-radius-sm: 0.125rem;   /* 2px */
-    --border-radius-base: 0.25rem;  /* 4px */
-    --border-radius-lg: 0.5rem;     /* 8px */
-    --border-radius-xl: 1rem;       /* 16px */
+    --border-radius-sm: 0.125rem;
+    /* 2px */
+    --border-radius-base: 0.25rem;
+    /* 4px */
+    --border-radius-lg: 0.5rem;
+    /* 8px */
+    --border-radius-xl: 1rem;
+    /* 16px */
     --border-radius-full: 9999px;
-    
+
     --border-width-thin: 1px;
     --border-width-base: 2px;
     --border-width-thick: 4px;
-    
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --shadow-base: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
     --shadow-xl: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
-    
+
     --grid-size: 30px;
     --module-size-sm: 60px;
     --module-size-base: 90px;
     --module-size-lg: 120px;
     --module-size-xl: 180px;
-    
+
     /* ───────────────────────────────────────────────────────────────────────────
        ANIMATION & TRANSITIONS - Smooth, purposeful motion
        ─────────────────────────────────────────────────────────────────────────── */
-    
+
     --transition-fast: 150ms ease-out;
     --transition-base: 250ms ease-out;
     --transition-slow: 350ms ease-out;
-    
+
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
@@ -187,8 +233,8 @@
 /* Base Typography and Body Styling */
 body {
     font-family: var(--font-family-mono);
-    background-color: var(--color-background-main);
-    background-image: radial-gradient(circle, var(--color-grid-dot) 1px, transparent 1px);
+    background-color: var(--color-pure-white);
+    background-image: radial-gradient(circle, var(--color-pure-black) 1px, transparent 1px);
     background-size: var(--grid-size) var(--grid-size);
     line-height: var(--line-height-normal);
     color: var(--color-text-primary);
@@ -509,6 +555,8 @@ header h1 {
 .synth-module {
     background-color: var(--color-pure-white);
     border: var(--border-width-thin) solid var(--color-border-medium);
+    border-bottom-width: 1px;
+    /* 2px bottom border for module separation */
     border-radius: 0;
     font-family: var(--font-family-mono);
     width: 100%;
@@ -516,8 +564,8 @@ header h1 {
     display: flex;
     flex-direction: column;
     gap: 0;
-    margin-bottom: -1px; /* Overlap borders for seamless connection */
-    position: relative; /* For absolute positioning of corner ports */
+    position: relative;
+    /* For absolute positioning of corner ports */
 }
 
 /* First module gets top rounded corners */
@@ -526,17 +574,21 @@ header h1 {
     border-top-right-radius: var(--border-radius-lg);
 }
 
-/* Last module gets bottom rounded corners */
+/* Last module gets bottom rounded corners and thicker border */
 .synth-module:last-child {
     border-bottom-left-radius: var(--border-radius-lg);
     border-bottom-right-radius: var(--border-radius-lg);
+    border-bottom-width: var(--border-width-thick);
     margin-bottom: 0;
 }
 
 /* Module Header */
 .module-header {
     padding: var(--space-4);
-    border-bottom: var(--border-width-thin) solid var(--color-pure-black);
+    background-color: var(--color-gray-50);
+    /* Light gray background for taskbar area */
+    border-bottom: var(--border-width-base) solid var(--color-pure-black);
+    /* 2px */
     margin-bottom: 0;
 }
 
@@ -652,7 +704,7 @@ header h1 {
     border-color: var(--color-accent-primary);
 }
 
-/* Wave Visual Display - Placeholder for waveform visualizations */
+/* Wave Visual Display - P5.js canvas container */
 .wave-visual {
     width: 100%;
     flex: 1;
@@ -666,6 +718,15 @@ header h1 {
     font-size: var(--font-size-xs);
     color: var(--color-text-tertiary);
     flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* P5.js canvas styling for wave visuals */
+.wave-visual canvas {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: var(--border-radius-base);
 }
 
 /* Synth Knob Styling - T.E. Color Scheme */
@@ -817,7 +878,8 @@ header h1 {
 }
 
 .patch-port .port-label {
-    display: none; /* Hide internal labels */
+    display: none;
+    /* Hide internal labels */
 }
 
 /* Audio Output Port - T.E. Yellow */
@@ -888,43 +950,43 @@ header h1 {
     #app-container {
         padding: var(--space-4);
     }
-    
+
     .synth-module {
         padding: 0;
     }
-    
+
     /* Keep horizontal layout even on mobile, just adjust sizes */
     .module-controls {
         flex-direction: row;
         gap: var(--space-2);
         justify-content: space-between;
     }
-    
+
     .control-group {
         min-width: 60px;
         flex: 1;
     }
-    
+
     .synth-knob {
         width: 40px;
         height: 40px;
     }
-    
+
     .control-label {
         font-size: 0.6rem;
     }
-    
+
     .control-value {
         font-size: 0.6rem;
     }
-    
+
     /* Keep envelope ADSR controls horizontal on mobile - remove grid layout */
     .synth-module[data-module-id="envelope-1"] .module-controls {
         flex-direction: row;
         gap: var(--space-2);
         justify-content: space-between;
     }
-    
+
     .synth-module[data-module-id="envelope-1"] .control-group {
         min-width: 60px;
         flex: 1;
@@ -936,7 +998,7 @@ header h1 {
     .control-group {
         min-width: 70px;
     }
-    
+
     .synth-knob {
         width: 45px;
         height: 45px;
@@ -948,29 +1010,29 @@ header h1 {
     .module-controls {
         gap: var(--space-1);
     }
-    
+
     .control-group {
         min-width: 50px;
     }
-    
+
     .synth-knob {
         width: 35px;
         height: 35px;
     }
-    
+
     .control-label {
         font-size: 0.5rem;
     }
-    
+
     .control-value {
         font-size: 0.5rem;
     }
-    
+
     /* Envelope controls remain horizontal on very small screens */
     .synth-module[data-module-id="envelope-1"] .module-controls {
         gap: var(--space-1);
     }
-    
+
     .synth-module[data-module-id="envelope-1"] .control-group {
         min-width: 50px;
     }
