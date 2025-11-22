@@ -316,7 +316,6 @@ function renderOscillatorModule(oscillatorData) {
             
             <div class="module-controls">
                 <div class="control-group">
-                    <label class="control-label">WAVE</label>
                     <select class="waveform-selector" data-param="waveform">
                         <option value="sine" ${oscillatorData.parameters.waveform === 'sine' ? 'selected' : ''}>SINE</option>
                         <option value="square" ${oscillatorData.parameters.waveform === 'square' ? 'selected' : ''}>SQUARE</option>
@@ -491,7 +490,6 @@ function renderLFOModule(lfoData) {
             
             <div class="module-controls">
                 <div class="control-group">
-                    <label class="control-label">TYPE</label>
                     <select class="lfo-type-selector" data-param="type">
                         <option value="sine" ${lfoData.parameters.type === 'sine' ? 'selected' : ''}>SINE</option>
                         <option value="square" ${lfoData.parameters.type === 'square' ? 'selected' : ''}>SQUARE</option>
