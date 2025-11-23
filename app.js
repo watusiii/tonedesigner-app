@@ -352,6 +352,7 @@ class P5CanvasManager {
             strokeWeight: options.strokeWeight || 2,
             strokeColor: options.strokeColor || '#000000',
             backgroundColor: options.backgroundColor || '#ffffff',
+            containerId: containerId, // Pass container ID for module detection
             ...options
         };
         
@@ -417,6 +418,129 @@ class P5CanvasManager {
      * @param {Object} config - Configuration options
      */
     drawWaveform(p, waveType, width, height, config) {
+        // Check if this is an LFO module based on the container context
+        const isLFOModule = this.isLFOModule(config.containerId);
+        
+        if (isLFOModule) {
+            // NEW STYLE: Smooth line rendering for LFO modules
+            this.drawSmoothWaveform(p, waveType, width, height, config);
+        } else {
+            // ORIGINAL STYLE: Pixel matrix rendering for other modules
+            this.drawPixelMatrixWaveform(p, waveType, width, height, config);
+        }
+    }
+    
+    /**
+     * Check if canvas belongs to LFO module by container ID
+     * @param {string} containerId - Container ID of the canvas
+     * @returns {boolean} - True if this canvas is in an LFO module
+     */
+    isLFOModule(containerId) {
+        // DISABLE LFO smooth rendering - use pixel matrix like VCF
+        return false;
+    }
+    
+    /**
+     * NEW: Smooth line rendering with inverted colors for LFO modules
+     * @param {Object} p - P5.js instance
+     * @param {string} waveType - Type of wave to draw
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
+     * @param {Object} config - Configuration options
+     */
+    drawSmoothWaveform(p, waveType, width, height, config) {
+        console.log(`drawSmoothWaveform CALLED for waveType: ${waveType}, container: ${config.containerId}`);
+        
+        // Inverted color scheme: black background, white line
+        p.background(0); // Black background
+        p.stroke(255); // White line
+        p.strokeWeight(2); // Thicker line for visibility
+        p.noFill();
+        
+        const centerY = height / 2;
+        const amplitude = height * 0.35; // Use 70% of height for wave amplitude
+        const resolution = 200; // High resolution for smooth curves
+        
+        // Start drawing the waveform
+        p.beginShape();
+        for (let i = 0; i <= resolution; i++) {
+            const x = p.map(i, 0, resolution, 0, width);
+            
+            // Get actual LFO frequency INSIDE the loop like ADSR does
+            let lfoFrequency = 1; // Default fallback
+            if (window.lfoNode && window.lfoNode.parameters) {
+                lfoFrequency = parseFloat(window.lfoNode.parameters.frequency) || 1;
+            }
+            
+            // Calculate cycles to display based on LFO frequency
+            const cyclesToShow = lfoFrequency * 10;
+            
+            const t = p.map(i, 0, resolution, 0, p.TWO_PI * cyclesToShow); // Use calculated cycles
+            let waveValue = 0;
+            
+            switch (waveType) {
+                case 'sine':
+                    waveValue = Math.sin(t);
+                    break;
+                case 'square':
+                    waveValue = Math.sin(t) > 0 ? 1 : -1;
+                    break;
+                case 'sawtooth':
+                    waveValue = 2 * (t % p.TWO_PI) / p.TWO_PI - 1;
+                    break;
+                case 'triangle':
+                    const phase = t % p.TWO_PI;
+                    if (phase < p.PI) {
+                        waveValue = 2 * phase / p.PI - 1;
+                    } else {
+                        waveValue = 3 - 2 * phase / p.PI;
+                    }
+                    break;
+                default:
+                    waveValue = Math.sin(t); // Default to sine
+            }
+            
+            const y = centerY - (waveValue * amplitude);
+            p.vertex(x, y);
+        }
+        p.endShape();
+        
+        // Optional: Add a subtle center line
+        p.stroke(80); // Dark gray
+        p.strokeWeight(0.5);
+        p.line(0, centerY, width, centerY);
+        
+        // SHOW THE FREQUENCY NUMBER ON THE VISUAL - TRY ALL POSSIBLE SOURCES
+        let displayFreq = 1;
+        let source = "default";
+        
+        // Try window.lfoNode
+        if (window.lfoNode && window.lfoNode.parameters && window.lfoNode.parameters.frequency) {
+            displayFreq = parseFloat(window.lfoNode.parameters.frequency);
+            source = "window.lfoNode";
+        }
+        // Try global lfoNode
+        else if (typeof lfoNode !== 'undefined' && lfoNode.parameters && lfoNode.parameters.frequency) {
+            displayFreq = parseFloat(lfoNode.parameters.frequency);
+            source = "global lfoNode";
+        }
+        
+        p.fill(255); // White text
+        p.textSize(12);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.text(`${displayFreq.toFixed(2)}Hz`, width/2, height/2 - 10);
+        p.text(`(${source})`, width/2, height/2 + 10);
+    }
+    
+    /**
+     * ORIGINAL: Pixel matrix rendering for non-LFO modules
+     * @param {Object} p - P5.js instance
+     * @param {string} waveType - Type of wave to draw
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
+     * @param {Object} config - Configuration options
+     */
+    drawPixelMatrixWaveform(p, waveType, width, height, config) {
         // Use 32x32 for ADSR, 16x16 for all other wave types
         const gridSize = waveType === 'adsr' ? 32 : 16;
         const pixelWidth = width / gridSize;
@@ -432,21 +556,32 @@ class P5CanvasManager {
         // Calculate waveform points and draw lines between them
         const wavePoints = [];
         for (let col = 0; col < gridSize; col++) {
-            const t = p.map(col, 0, gridSize - 1, 0, p.TWO_PI * 2); // 2 cycles across the display
+            // Check if this is LFO and get actual frequency
+            let cycles = 2; // Default 2 cycles
+            const container = document.getElementById(config.containerId);
+            const module = container?.closest('.synth-module');
+            const isLFO = module && module.dataset.moduleId && module.dataset.moduleId.includes('lfo');
+            
+            if (isLFO && lfoNode && lfoNode.parameters) {
+                const lfoFreq = parseFloat(lfoNode.parameters.frequency) || 1;
+                cycles = lfoFreq * 2; // Convert frequency to cycles
+            }
+            
+            const t = p.map(col, 0, gridSize - 1, 0, p.TWO_PI * cycles); // Use calculated cycles
             let waveValue = 0;
             
             switch (waveType) {
                 case 'sine':
-                    waveValue = Math.sin(t + p.frameCount * 0.05);
+                    waveValue = Math.sin(t + (isLFO ? 0 : p.frameCount * 0.05));
                     break;
                 case 'square':
-                    waveValue = Math.sin(t + p.frameCount * 0.05) > 0 ? 1 : -1;
+                    waveValue = Math.sin(t + (isLFO ? 0 : p.frameCount * 0.05)) > 0 ? 1 : -1;
                     break;
                 case 'sawtooth':
-                    waveValue = 2 * ((t + p.frameCount * 0.05) % p.TWO_PI) / p.TWO_PI - 1;
+                    waveValue = 2 * ((t + (isLFO ? 0 : p.frameCount * 0.05)) % p.TWO_PI) / p.TWO_PI - 1;
                     break;
                 case 'triangle':
-                    const phase = (t + p.frameCount * 0.05) % p.TWO_PI;
+                    const phase = (t + (isLFO ? 0 : p.frameCount * 0.05)) % p.TWO_PI;
                     if (phase < p.PI) {
                         waveValue = 2 * phase / p.PI - 1;
                     } else {
@@ -500,6 +635,19 @@ class P5CanvasManager {
                 p.strokeWeight(0.5);
                 p.rect(x, y, pixelWidth, pixelHeight);
             }
+        }
+        
+        // Show frequency only on LFO visual
+        const container = document.getElementById(config.containerId);
+        const module = container?.closest('.synth-module');
+        const isLFO = module && module.dataset.moduleId && module.dataset.moduleId.includes('lfo');
+        
+        if (isLFO && lfoNode && lfoNode.parameters) {
+            const freq = lfoNode.parameters.frequency;
+            p.fill(255, 0, 0); // Red text
+            p.textSize(10);
+            p.textAlign(p.CENTER, p.CENTER);
+            p.text(`${freq}Hz`, width/2, height - 10);
         }
     }
     
@@ -1481,11 +1629,23 @@ function setupKnobInteraction() {
             let newValue = startValue;
             
             if (param === 'frequency') {
-                // Frequency range: 20Hz to 20000Hz with logarithmic scaling
-                const sensitivity = 2; // Adjust for more/less sensitivity
-                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
-                newValue = Math.max(20, Math.min(20000, startValue * multiplier));
-                newValue = Math.round(newValue * 10) / 10; // Round to 1 decimal
+                // Check if this is an LFO frequency (different range than VCO)
+                const moduleElement = knob.closest('.synth-module');
+                const moduleId = moduleElement.dataset.moduleId;
+                
+                if (moduleId === 'lfo-1') {
+                    // LFO frequency range: 0.1Hz to 10Hz with logarithmic scaling
+                    const sensitivity = 1.5;
+                    const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                    newValue = Math.max(0.1, Math.min(10, startValue * multiplier));
+                    newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+                } else {
+                    // VCO frequency range: 20Hz to 20000Hz with logarithmic scaling
+                    const sensitivity = 2; // Adjust for more/less sensitivity
+                    const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                    newValue = Math.max(20, Math.min(20000, startValue * multiplier));
+                    newValue = Math.round(newValue * 10) / 10; // Round to 1 decimal
+                }
             } else if (param === 'detune') {
                 // Detune range: -100¢ to +100¢
                 const sensitivity = 1;
@@ -1577,6 +1737,16 @@ function setupKnobInteraction() {
                     }
                 }
                 
+                // Update LFO visual if this is an LFO parameter
+                if (moduleId === 'lfo-1' && p5Manager) {
+                    const lfoCanvas = document.querySelector('[data-module-id="lfo-1"] .wave-visual');
+                    if (lfoCanvas && lfoCanvas.id) {
+                        // The P5 canvas should automatically use the updated lfoNode.parameters
+                        // on the next frame since drawSmoothWaveform() reads from window.lfoNode
+                        console.log(`T.E. Grid Synthesis: LFO visual will update for ${param} = ${newValue}`);
+                    }
+                }
+                
                 // Update code display in real-time
                 updateCodeDisplay();
             }
@@ -1591,11 +1761,23 @@ function setupKnobInteraction() {
             let newValue = startValue;
             
             if (param === 'frequency') {
-                // Frequency range: 20Hz to 20000Hz with logarithmic scaling
-                const sensitivity = 2; // Adjust for more/less sensitivity
-                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
-                newValue = Math.max(20, Math.min(20000, startValue * multiplier));
-                newValue = Math.round(newValue * 10) / 10; // Round to 1 decimal
+                // Check if this is an LFO frequency (different range than VCO)
+                const moduleElement = knob.closest('.synth-module');
+                const moduleId = moduleElement.dataset.moduleId;
+                
+                if (moduleId === 'lfo-1') {
+                    // LFO frequency range: 0.1Hz to 10Hz with logarithmic scaling
+                    const sensitivity = 1.5;
+                    const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                    newValue = Math.max(0.1, Math.min(10, startValue * multiplier));
+                    newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+                } else {
+                    // VCO frequency range: 20Hz to 20000Hz with logarithmic scaling
+                    const sensitivity = 2; // Adjust for more/less sensitivity
+                    const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                    newValue = Math.max(20, Math.min(20000, startValue * multiplier));
+                    newValue = Math.round(newValue * 10) / 10; // Round to 1 decimal
+                }
             } else if (param === 'detune') {
                 // Detune range: -100¢ to +100¢
                 const sensitivity = 1;
@@ -1722,13 +1904,27 @@ function updateKnobVisuals(knob, param, value) {
         let displayText = '';
         
         if (param === 'frequency') {
-            // Map frequency (20-20000 Hz) to rotation (-135° to +135°)
-            const logMin = Math.log(20);
-            const logMax = Math.log(20000);
-            const logValue = Math.log(value);
-            const normalized = (logValue - logMin) / (logMax - logMin);
-            rotation = -135 + (normalized * 270); // -135° to +135°
-            displayText = `${value}Hz`;
+            // Check if this is an LFO frequency (different range than VCO)
+            const moduleElement = knob.closest('.synth-module');
+            const moduleId = moduleElement?.dataset.moduleId;
+            
+            if (moduleId === 'lfo-1') {
+                // Map LFO frequency (0.1-10 Hz) to rotation (-135° to +135°)
+                const logMin = Math.log(0.1);
+                const logMax = Math.log(10);
+                const logValue = Math.log(value);
+                const normalized = (logValue - logMin) / (logMax - logMin);
+                rotation = -135 + (normalized * 270); // -135° to +135°
+                displayText = `${value}Hz`;
+            } else {
+                // Map VCO frequency (20-20000 Hz) to rotation (-135° to +135°)
+                const logMin = Math.log(20);
+                const logMax = Math.log(20000);
+                const logValue = Math.log(value);
+                const normalized = (logValue - logMin) / (logMax - logMin);
+                rotation = -135 + (normalized * 270); // -135° to +135°
+                displayText = `${value}Hz`;
+            }
         } else if (param === 'detune') {
             // Map detune (-100 to +100 ¢) to rotation (-135° to +135°)
             const normalized = (value + 100) / 200; // 0 to 1
