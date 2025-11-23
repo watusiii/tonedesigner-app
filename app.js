@@ -606,7 +606,7 @@ class P5CanvasManager {
     }
     
     /**
-     * Calculate static reverb impulse response visualization
+     * Calculate static reverb decay visualization
      * @param {number} col - Current column (0 to gridSize-1)
      * @param {number} gridSize - Size of the pixel grid
      * @returns {number} - Wave value (-1 to 1)
@@ -621,31 +621,16 @@ class P5CanvasManager {
             wet = parseFloat(window.reverbNode.parameters.wet) || 0.5;
         }
         
-        // Normalize column position to 0-1 range
-        const progress = col / (gridSize - 1);
+        // Simple exponential decay from left to right
+        const progress = col / (gridSize - 1); // 0 to 1 across the display
         
-        let waveValue = -1; // Start at silence
+        // Create exponential decay curve
+        // Map decay parameter (0.1 to 10 seconds) to decay rate
+        const decayRate = 1.0 / Math.max(decay, 0.1); // Higher decay = slower rate
+        const amplitude = Math.pow(Math.E, -progress * decayRate * 5) * wet;
         
-        // Initial impulse at the beginning
-        if (progress < 0.1) {
-            waveValue = 1 * wet; // Scale by wet level
-        } else {
-            // Create exponential decay tail
-            const decayTime = progress - 0.1; // Time since impulse
-            const decayFactor = Math.pow(Math.E, -decayTime / (decay * 0.3)); // Faster visual decay
-            
-            // Add some irregular reflections for visual interest
-            const reflection1 = progress > 0.2 && progress < 0.25 ? 0.6 : 0;
-            const reflection2 = progress > 0.4 && progress < 0.43 ? 0.4 : 0;
-            const reflection3 = progress > 0.6 && progress < 0.62 ? 0.3 : 0;
-            
-            const reflectionSum = (reflection1 + reflection2 + reflection3) * decayFactor * wet;
-            
-            // Overall decay envelope
-            const decayLevel = decayFactor * 0.1 * wet; // Base decay level
-            
-            waveValue = -1 + Math.max(reflectionSum, decayLevel);
-        }
+        // Convert to -1 to 1 range
+        const waveValue = amplitude * 2 - 1;
         
         return Math.max(-1, Math.min(1, waveValue));
     }
@@ -822,7 +807,7 @@ const patchConnections = [
         from: 'lfo-1',
         fromPort: 'cv-output', 
         to: 'filter-1',
-        toPort: 'frequency-knob',
+        toPort: 'cv-input',
         type: 'cv',
         id: 'lfo-to-filter-freq'
     }
@@ -1131,6 +1116,10 @@ function renderFilterModule(filterData) {
                 </div>
                 
                 <div class="control-group">
+                    <div class="corner-port-input secondary">
+                        <div class="patch-port cv-input" data-port-type="cv-in" data-signal="cv"></div>
+                        <span class="corner-port-label">CV</span>
+                    </div>
                     <label class="control-label">FREQ</label>
                     <div class="synth-knob filter-knob" data-param="frequency" data-value="${filterData.parameters.frequency}">
                         <div class="knob-indicator"></div>
@@ -1473,6 +1462,18 @@ function setupKnobInteraction() {
             knob.style.cursor = 'grabbing';
         });
         
+        // Touch events for mobile
+        knob.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            startY = e.touches[0].clientY;
+            startValue = parseFloat(knob.dataset.value) || 0;
+            
+            // Prevent scrolling and text selection
+            e.preventDefault();
+            
+            knob.style.cursor = 'grabbing';
+        });
+        
         document.addEventListener('mousemove', (e) => {
             if (!isDragging || !param) return;
             
@@ -1567,12 +1568,136 @@ function setupKnobInteraction() {
                     }
                 }
                 
+                // Update reverb visual if this is a reverb parameter
+                if (moduleId === 'reverb-1' && p5Manager) {
+                    const reverbCanvas = document.querySelector('[data-wave-type="reverb"]');
+                    if (reverbCanvas && reverbCanvas.id) {
+                        // The P5 canvas will automatically use the updated reverbNode.parameters
+                        // on the next frame since calculateReverbStatic() reads from window.reverbNode
+                        console.log(`T.E. Grid Synthesis: Reverb visual will update for ${param} = ${newValue}`);
+                    }
+                }
+                
                 // Update code display in real-time
                 updateCodeDisplay();
             }
         });
         
+        // Touch move event for mobile
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging || !param) return;
+            
+            // Calculate value change based on vertical movement
+            const deltaY = startY - e.touches[0].clientY; // Inverted: up = increase
+            let newValue = startValue;
+            
+            if (param === 'frequency') {
+                // Frequency range: 20Hz to 20000Hz with logarithmic scaling
+                const sensitivity = 2; // Adjust for more/less sensitivity
+                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                newValue = Math.max(20, Math.min(20000, startValue * multiplier));
+                newValue = Math.round(newValue * 10) / 10; // Round to 1 decimal
+            } else if (param === 'detune') {
+                // Detune range: -100¢ to +100¢
+                const sensitivity = 1;
+                newValue = Math.max(-100, Math.min(100, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue);
+            } else if (param === 'Q') {
+                // Q range: 0.001 to 20 with logarithmic scaling
+                const sensitivity = 1.5;
+                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                newValue = Math.max(0.001, Math.min(20, startValue * multiplier));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param === 'attack' || param === 'decay' || param === 'release') {
+                // Time parameters: 0.01s to 5s with logarithmic scaling
+                const sensitivity = 1.8;
+                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                newValue = Math.max(0.01, Math.min(5, startValue * multiplier));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param === 'sustain') {
+                // Sustain level: 0.0 to 1.0 linear scaling
+                const sensitivity = 0.01;
+                newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param === 'min' || param === 'max') {
+                // LFO min/max frequency range: 20Hz to 20000Hz with logarithmic scaling
+                const sensitivity = 2;
+                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                newValue = Math.max(20, Math.min(20000, startValue * multiplier));
+                newValue = Math.round(newValue * 10) / 10; // Round to 1 decimal
+            } else if (param === 'decay') {
+                // Reverb decay time: 0.1s to 10s with logarithmic scaling
+                const sensitivity = 1.8;
+                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                newValue = Math.max(0.1, Math.min(10, startValue * multiplier));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param === 'wet') {
+                // Reverb wet level: 0.0 to 1.0 linear scaling
+                const sensitivity = 0.01;
+                newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            }
+            
+            // Determine which node to update based on module
+            const moduleElement = knob.closest('.synth-module');
+            const moduleId = moduleElement.dataset.moduleId;
+            let targetNode;
+            
+            if (moduleId === 'oscillator-1') {
+                targetNode = oscillatorNode;
+            } else if (moduleId === 'filter-1') {
+                targetNode = filterNode;
+            } else if (moduleId === 'envelope-1') {
+                targetNode = envelopeNode;
+            } else if (moduleId === 'lfo-1') {
+                targetNode = lfoNode;
+            } else if (moduleId === 'reverb-1') {
+                targetNode = reverbNode;
+            }
+            
+            if (targetNode) {
+                // Update data structure
+                targetNode.parameters[param] = newValue;
+                
+                // Update knob data attribute
+                knob.dataset.value = newValue;
+                
+                // Update visual feedback
+                updateKnobVisuals(knob, param, newValue);
+                
+                // Sync with Tone.js
+                syncToneEngine(targetNode);
+                
+                // Update ADSR visual if this is an envelope parameter
+                if (moduleId === 'envelope-1' && p5Manager) {
+                    const adsrCanvas = document.querySelector('[data-wave-type="adsr"]');
+                    if (adsrCanvas && adsrCanvas.id) {
+                        console.log(`T.E. Grid Synthesis: ADSR visual will update for ${param} = ${newValue}`);
+                    }
+                }
+                
+                // Update reverb visual if this is a reverb parameter
+                if (moduleId === 'reverb-1' && p5Manager) {
+                    const reverbCanvas = document.querySelector('[data-wave-type="reverb"]');
+                    if (reverbCanvas && reverbCanvas.id) {
+                        console.log(`T.E. Grid Synthesis: Reverb visual will update for ${param} = ${newValue}`);
+                    }
+                }
+                
+                // Update code display in real-time
+                updateCodeDisplay();
+            }
+        }, { passive: false });
+        
         document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                knob.style.cursor = 'pointer';
+            }
+        });
+        
+        // Touch end event for mobile
+        document.addEventListener('touchend', () => {
             if (isDragging) {
                 isDragging = false;
                 knob.style.cursor = 'pointer';
