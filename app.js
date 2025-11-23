@@ -157,6 +157,9 @@ async function setupSynth() {
         // Initialize P5 Canvas Manager
         initializeP5Manager();
         
+        // Initialize Patch Cable Manager
+        initializePatchCableManager();
+        
         console.log('T.E. Grid Synthesis: Synthesizer platform initialized');
         
     } catch (error) {
@@ -229,7 +232,8 @@ let filterToneObject;
  * This object represents the envelope's state and serves as input for both
  * Tone.js object creation and the Code Compiler
  */
-const envelopeNode = {
+// Make envelope node globally accessible for ADSR visualization
+window.envelopeNode = {
     id: "envelope-1",
     type: "AmplitudeEnvelope",
     parameters: {
@@ -239,6 +243,9 @@ const envelopeNode = {
         release: 1.0
     }
 };
+
+// Local reference for backward compatibility
+const envelopeNode = window.envelopeNode;
 
 /**
  * Global Tone.js envelope instance
@@ -285,7 +292,8 @@ let lfoToneObject;
  * This object represents the reverb's state and serves as input for both
  * Tone.js object creation and the Code Compiler
  */
-const reverbNode = {
+// Make reverb node globally accessible for visualization
+window.reverbNode = {
     id: "reverb-1",
     type: "Reverb",
     parameters: {
@@ -293,6 +301,9 @@ const reverbNode = {
         wet: 0.5           // Mix level (0 = dry, 1 = wet)
     }
 };
+
+// Local reference for backward compatibility
+const reverbNode = window.reverbNode;
 
 /**
  * Global Tone.js Reverb instance
@@ -344,6 +355,9 @@ class P5CanvasManager {
             ...options
         };
         
+        // Create a mutable reference for the wave type that can be updated
+        const waveTypeRef = { current: waveType };
+        
         const sketch = (p) => {
             let canvasWidth, canvasHeight;
             
@@ -368,8 +382,8 @@ class P5CanvasManager {
                 p.strokeWeight(config.strokeWeight);
                 p.noFill();
                 
-                // Draw waveform based on type
-                this.drawWaveform(p, waveType, canvasWidth, canvasHeight, config);
+                // Use the current wave type from the mutable reference
+                this.drawWaveform(p, waveTypeRef.current, canvasWidth, canvasHeight, config);
             };
             
             // Handle window resize
@@ -387,6 +401,7 @@ class P5CanvasManager {
         this.canvases.set(containerId, {
             instance: p5Instance,
             waveType: waveType,
+            waveTypeRef: waveTypeRef,
             config: config
         });
         
@@ -394,7 +409,7 @@ class P5CanvasManager {
     }
     
     /**
-     * Draw different waveform types
+     * Draw pixel matrix waveform display (16x16 for most, 32x32 for ADSR)
      * @param {Object} p - P5.js instance
      * @param {string} waveType - Type of wave to draw
      * @param {number} width - Canvas width
@@ -402,42 +417,309 @@ class P5CanvasManager {
      * @param {Object} config - Configuration options
      */
     drawWaveform(p, waveType, width, height, config) {
-        const centerY = height / 2;
-        const amplitude = config.amplitude * (height / 100); // Scale amplitude to canvas height
-        const frequency = config.frequency;
+        // Use 32x32 for ADSR, 16x16 for all other wave types
+        const gridSize = waveType === 'adsr' ? 32 : 16;
+        const pixelWidth = width / gridSize;
+        const pixelHeight = height / gridSize;
+        const centerRow = Math.floor(gridSize / 2);
         
-        p.beginShape();
+        // Clear background
+        p.background(255); // White background
         
-        for (let x = 0; x <= width; x += 2) {
-            let y;
-            const t = p.map(x, 0, width, 0, p.TWO_PI * frequency);
+        // Create a 2D array to track which pixels should be lit
+        const pixelMap = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
+        
+        // Calculate waveform points and draw lines between them
+        const wavePoints = [];
+        for (let col = 0; col < gridSize; col++) {
+            const t = p.map(col, 0, gridSize - 1, 0, p.TWO_PI * 2); // 2 cycles across the display
+            let waveValue = 0;
             
             switch (waveType) {
                 case 'sine':
-                    y = centerY + amplitude * p.sin(t + p.frameCount * 0.02);
+                    waveValue = Math.sin(t + p.frameCount * 0.05);
                     break;
                 case 'square':
-                    y = centerY + amplitude * (p.sin(t + p.frameCount * 0.02) > 0 ? 1 : -1);
+                    waveValue = Math.sin(t + p.frameCount * 0.05) > 0 ? 1 : -1;
                     break;
                 case 'sawtooth':
-                    y = centerY + amplitude * (2 * ((t + p.frameCount * 0.02) % p.TWO_PI) / p.TWO_PI - 1);
+                    waveValue = 2 * ((t + p.frameCount * 0.05) % p.TWO_PI) / p.TWO_PI - 1;
                     break;
                 case 'triangle':
-                    const phase = (t + p.frameCount * 0.02) % p.TWO_PI;
+                    const phase = (t + p.frameCount * 0.05) % p.TWO_PI;
                     if (phase < p.PI) {
-                        y = centerY + amplitude * (2 * phase / p.PI - 1);
+                        waveValue = 2 * phase / p.PI - 1;
                     } else {
-                        y = centerY + amplitude * (3 - 2 * phase / p.PI);
+                        waveValue = 3 - 2 * phase / p.PI;
                     }
                     break;
+                case 'adsr':
+                    // ADSR envelope visualization - reflects actual knob values
+                    waveValue = this.calculateADSRValue(col, gridSize);
+                    break;
+                case 'reverb':
+                    // Reverb visualization - static impulse response display
+                    waveValue = this.calculateReverbStatic(col, gridSize);
+                    break;
+                case 'lowpass':
+                case 'highpass':
+                case 'bandpass':
+                case 'notch':
+                    // Filter frequency response visualization
+                    waveValue = this.calculateFilterResponse(col, gridSize, waveType);
+                    break;
                 default:
-                    y = centerY; // Flat line for unknown types
+                    waveValue = 0;
             }
             
-            p.vertex(x, y);
+            // Convert wave value to row position
+            const waveRow = Math.round(centerRow - (waveValue * (gridSize / 4))); // Scale to fit grid
+            wavePoints.push({ col, row: Math.max(0, Math.min(gridSize - 1, waveRow)) });
         }
         
-        p.endShape();
+        // Draw lines between consecutive points to fill gaps
+        for (let i = 0; i < wavePoints.length - 1; i++) {
+            const point1 = wavePoints[i];
+            const point2 = wavePoints[i + 1];
+            
+            // Light up the line between these two points
+            this.drawPixelLine(pixelMap, point1.col, point1.row, point2.col, point2.row, gridSize);
+        }
+        
+        // Render the pixel grid
+        for (let pixelCol = 0; pixelCol < gridSize; pixelCol++) {
+            for (let pixelRow = 0; pixelRow < gridSize; pixelRow++) {
+                const x = pixelCol * pixelWidth;
+                const y = pixelRow * pixelHeight;
+                
+                const isLit = pixelMap[pixelRow][pixelCol];
+                
+                // Draw pixel
+                p.fill(isLit ? 0 : 248); // Black when lit, slightly gray when off
+                p.stroke(200); // Light gray grid lines
+                p.strokeWeight(0.5);
+                p.rect(x, y, pixelWidth, pixelHeight);
+            }
+        }
+    }
+    
+    /**
+     * Draw a line between two pixel points using Bresenham's algorithm
+     * @param {Array} pixelMap - 2D array representing the pixel grid
+     * @param {number} x0 - Starting column
+     * @param {number} y0 - Starting row
+     * @param {number} x1 - Ending column
+     * @param {number} y1 - Ending row
+     * @param {number} gridSize - Size of the grid
+     */
+    drawPixelLine(pixelMap, x0, y0, x1, y1, gridSize) {
+        // Bresenham's line algorithm for pixel-perfect line drawing
+        const dx = Math.abs(x1 - x0);
+        const dy = Math.abs(y1 - y0);
+        const sx = x0 < x1 ? 1 : -1;
+        const sy = y0 < y1 ? 1 : -1;
+        let err = dx - dy;
+        
+        let x = x0;
+        let y = y0;
+        
+        while (true) {
+            // Light up current pixel if it's within bounds
+            if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+                pixelMap[y][x] = true;
+            }
+            
+            // Check if we've reached the end point
+            if (x === x1 && y === y1) break;
+            
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+    
+    /**
+     * Calculate ADSR envelope value based on actual parameter settings
+     * @param {number} col - Current column (0 to gridSize-1)
+     * @param {number} gridSize - Size of the pixel grid
+     * @returns {number} - Wave value (-1 to 1)
+     */
+    calculateADSRValue(col, gridSize) {
+        // Get actual ADSR parameters from the envelope node
+        let attack = 0.1, decay = 0.3, sustain = 0.7, release = 0.4;
+        
+        // Get real values from the envelope node
+        if (window.envelopeNode && window.envelopeNode.parameters) {
+            attack = parseFloat(window.envelopeNode.parameters.attack) || 0.1;
+            decay = parseFloat(window.envelopeNode.parameters.decay) || 0.3;
+            sustain = parseFloat(window.envelopeNode.parameters.sustain) || 0.7;
+            release = parseFloat(window.envelopeNode.parameters.release) || 0.4;
+        }
+        
+        // Normalize parameters for visual representation
+        const totalTime = attack + decay + release + 1.0; // +1 for sustain display time
+        const attackTime = attack / totalTime;
+        const decayTime = decay / totalTime;
+        const sustainTime = 1.0 / totalTime; // Fixed time for sustain display
+        const releaseTime = release / totalTime;
+        
+        // Calculate cumulative phase boundaries
+        const attackEnd = attackTime;
+        const decayEnd = attackEnd + decayTime;
+        const sustainEnd = decayEnd + sustainTime;
+        const releaseEnd = sustainEnd + releaseTime;
+        
+        // Normalize column position to 0-1 range
+        const progress = col / (gridSize - 1);
+        
+        // Scale progress to fit within the total envelope time
+        const scaledProgress = progress * releaseEnd;
+        
+        let waveValue = -1; // Start at bottom (silence)
+        
+        if (scaledProgress <= attackEnd) {
+            // Attack phase - exponential rise from 0 to 1
+            const attackProgress = scaledProgress / attackEnd;
+            waveValue = -1 + 2 * Math.pow(attackProgress, 0.7); // Exponential curve
+        } else if (scaledProgress <= decayEnd) {
+            // Decay phase - exponential fall from 1 to sustain level
+            const decayProgress = (scaledProgress - attackEnd) / decayTime;
+            const sustainLevel = sustain * 2 - 1; // Convert 0-1 to -1 to 1
+            waveValue = 1 + (sustainLevel - 1) * Math.pow(decayProgress, 2);
+        } else if (scaledProgress <= sustainEnd) {
+            // Sustain phase - hold sustain level
+            waveValue = sustain * 2 - 1; // Convert 0-1 to -1 to 1
+        } else if (scaledProgress <= releaseEnd) {
+            // Release phase - exponential fall from sustain to 0
+            const releaseProgress = (scaledProgress - sustainEnd) / releaseTime;
+            const sustainLevel = sustain * 2 - 1;
+            waveValue = sustainLevel + (-1 - sustainLevel) * Math.pow(releaseProgress, 2);
+        }
+        
+        return Math.max(-1, Math.min(1, waveValue)); // Clamp to -1 to 1 range
+    }
+    
+    /**
+     * Calculate static reverb impulse response visualization
+     * @param {number} col - Current column (0 to gridSize-1)
+     * @param {number} gridSize - Size of the pixel grid
+     * @returns {number} - Wave value (-1 to 1)
+     */
+    calculateReverbStatic(col, gridSize) {
+        // Get actual reverb parameters from the reverb node
+        let decay = 1.5, wet = 0.5;
+        
+        // Get real values from the reverb node
+        if (window.reverbNode && window.reverbNode.parameters) {
+            decay = parseFloat(window.reverbNode.parameters.decay) || 1.5;
+            wet = parseFloat(window.reverbNode.parameters.wet) || 0.5;
+        }
+        
+        // Normalize column position to 0-1 range
+        const progress = col / (gridSize - 1);
+        
+        let waveValue = -1; // Start at silence
+        
+        // Initial impulse at the beginning
+        if (progress < 0.1) {
+            waveValue = 1 * wet; // Scale by wet level
+        } else {
+            // Create exponential decay tail
+            const decayTime = progress - 0.1; // Time since impulse
+            const decayFactor = Math.pow(Math.E, -decayTime / (decay * 0.3)); // Faster visual decay
+            
+            // Add some irregular reflections for visual interest
+            const reflection1 = progress > 0.2 && progress < 0.25 ? 0.6 : 0;
+            const reflection2 = progress > 0.4 && progress < 0.43 ? 0.4 : 0;
+            const reflection3 = progress > 0.6 && progress < 0.62 ? 0.3 : 0;
+            
+            const reflectionSum = (reflection1 + reflection2 + reflection3) * decayFactor * wet;
+            
+            // Overall decay envelope
+            const decayLevel = decayFactor * 0.1 * wet; // Base decay level
+            
+            waveValue = -1 + Math.max(reflectionSum, decayLevel);
+        }
+        
+        return Math.max(-1, Math.min(1, waveValue));
+    }
+    
+    
+    /**
+     * Calculate filter frequency response visualization
+     * @param {number} col - Current column (0 to gridSize-1)
+     * @param {number} gridSize - Size of the pixel grid
+     * @param {string} filterType - Type of filter (lowpass, highpass, bandpass, notch)
+     * @returns {number} - Wave value (-1 to 1)
+     */
+    calculateFilterResponse(col, gridSize, filterType) {
+        // Get actual filter parameters
+        let frequency = 8000, Q = 1, type = 'lowpass';
+        
+        // Get real values from the filter node
+        const filterNodes = [window.filterNode, filterNode].filter(Boolean);
+        if (filterNodes.length > 0) {
+            const node = filterNodes[0];
+            if (node && node.parameters) {
+                frequency = parseFloat(node.parameters.frequency) || 8000;
+                Q = parseFloat(node.parameters.Q) || 1;
+                type = node.parameters.type || 'lowpass';
+            }
+        }
+        
+        // Map column to frequency range (20Hz to 20kHz, logarithmic)
+        const progress = col / (gridSize - 1);
+        const minFreq = 20;
+        const maxFreq = 20000;
+        const currentFreq = minFreq * Math.pow(maxFreq / minFreq, progress);
+        
+        // Calculate filter response at this frequency
+        let response = 0;
+        const cutoffRatio = currentFreq / frequency;
+        
+        switch (type) {
+            case 'lowpass':
+                // Low-pass filter response (6dB/octave rolloff)
+                if (cutoffRatio <= 1) {
+                    response = 1 / Math.sqrt(1 + Math.pow(cutoffRatio * Q, 2));
+                } else {
+                    response = 1 / Math.sqrt(1 + Math.pow(cutoffRatio / Q, 2));
+                }
+                break;
+                
+            case 'highpass':
+                // High-pass filter response (6dB/octave rolloff)
+                if (cutoffRatio >= 1) {
+                    response = 1 / Math.sqrt(1 + Math.pow(Q / cutoffRatio, 2));
+                } else {
+                    response = 1 / Math.sqrt(1 + Math.pow(1 / (cutoffRatio * Q), 2));
+                }
+                break;
+                
+            case 'bandpass':
+                // Band-pass filter response (peak at cutoff frequency)
+                const distance = Math.abs(Math.log2(cutoffRatio));
+                response = 1 / Math.sqrt(1 + Math.pow(distance * Q * 2, 2));
+                break;
+                
+            case 'notch':
+                // Notch filter response (minimum at cutoff frequency)
+                const notchDistance = Math.abs(Math.log2(cutoffRatio));
+                response = Math.sqrt(Math.pow(notchDistance * Q, 2) / (1 + Math.pow(notchDistance * Q, 2)));
+                break;
+        }
+        
+        // Convert response (0 to 1) to wave value (-1 to 1)
+        // Map 0 response to bottom, 1 response to top
+        const waveValue = response * 2 - 1;
+        
+        return Math.max(-1, Math.min(1, waveValue));
     }
     
     /**
@@ -461,6 +743,11 @@ class P5CanvasManager {
         const canvas = this.canvases.get(containerId);
         if (canvas) {
             canvas.waveType = newWaveType;
+            // Update the mutable reference so the draw loop sees the change
+            if (canvas.waveTypeRef) {
+                canvas.waveTypeRef.current = newWaveType;
+            }
+            console.log(`P5 Canvas Manager: Updated wave type to ${newWaveType} for ${containerId}`);
         }
     }
     
@@ -495,6 +782,203 @@ class P5CanvasManager {
 let p5Manager;
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * PATCH CABLE VISUALIZATION SYSTEM - SVG SIGNAL FLOW
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Hardcoded Patch Connections - Mirrors the Tone.js connection logic
+ * This array defines all the visual cables that should be drawn
+ */
+const patchConnections = [
+    // Audio signal chain: VCO → VCF → ENV → REVERB → Destination
+    {
+        from: 'oscillator-1',
+        fromPort: 'audio-output',
+        to: 'filter-1', 
+        toPort: 'audio-input',
+        type: 'audio',
+        id: 'vco-to-filter'
+    },
+    {
+        from: 'filter-1',
+        fromPort: 'audio-output',
+        to: 'envelope-1',
+        toPort: 'audio-input', 
+        type: 'audio',
+        id: 'filter-to-envelope'
+    },
+    {
+        from: 'envelope-1',
+        fromPort: 'audio-output',
+        to: 'reverb-1',
+        toPort: 'audio-input',
+        type: 'audio', 
+        id: 'envelope-to-reverb'
+    },
+    // CV modulation: LFO → VCF Frequency
+    {
+        from: 'lfo-1',
+        fromPort: 'cv-output', 
+        to: 'filter-1',
+        toPort: 'frequency-knob',
+        type: 'cv',
+        id: 'lfo-to-filter-freq'
+    }
+];
+
+/**
+ * Patch Cable Manager - Handles SVG cable drawing and coordinate tracking
+ */
+class PatchCableManager {
+    constructor() {
+        this.svgElement = null;
+        this.cables = new Map();
+    }
+    
+    /**
+     * Initialize the patch cable system
+     */
+    initialize() {
+        this.svgElement = document.getElementById('patch-svg');
+        if (!this.svgElement) {
+            console.error('Patch Cable Manager: SVG element not found');
+            return false;
+        }
+        
+        // Setup resize listener
+        window.addEventListener('resize', () => {
+            this.drawAllCables();
+        });
+        
+        return true;
+    }
+    
+    /**
+     * Get absolute coordinates of a patch port or knob
+     * @param {string} moduleId - The module ID (e.g., 'oscillator-1')
+     * @param {string} portType - The port type (e.g., 'audio-output', 'frequency-knob')
+     * @returns {Object|null} - {x, y} coordinates or null if not found
+     */
+    getPortCoordinates(moduleId, portType) {
+        const module = document.querySelector(`[data-module-id="${moduleId}"]`);
+        if (!module) return null;
+        
+        let targetElement = null;
+        
+        // Find the target element based on port type
+        if (portType.includes('knob')) {
+            // For knob targets (CV connections), find the knob by parameter name
+            const paramName = portType.replace('-knob', '');
+            targetElement = module.querySelector(`[data-param="${paramName}"]`);
+        } else {
+            // For patch ports, find by port type class
+            targetElement = module.querySelector(`.patch-port.${portType.replace('-', '-')}`);
+        }
+        
+        if (!targetElement) return null;
+        
+        // Get the element's position relative to the SVG container
+        const svgRect = this.svgElement.getBoundingClientRect();
+        const elementRect = targetElement.getBoundingClientRect();
+        
+        return {
+            x: elementRect.left + elementRect.width / 2 - svgRect.left,
+            y: elementRect.top + elementRect.height / 2 - svgRect.top
+        };
+    }
+    
+    /**
+     * Create a Bezier curve path between two points with realistic cable droop
+     * @param {Object} start - Starting coordinates {x, y}
+     * @param {Object} end - Ending coordinates {x, y}
+     * @returns {string} - SVG path string
+     */
+    createCablePath(start, end) {
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Calculate droop amount based on cable length (longer cables droop more)
+        const droopFactor = Math.min(distance * 0.15, 60); // Max droop of 60px
+        const midY = (start.y + end.y) / 2 + droopFactor;
+        
+        // Control point offset for natural cable curve
+        const controlOffset = Math.min(Math.abs(dx) * 0.4, 80);
+        
+        // Calculate control points for drooping Bezier curve
+        const cp1x = start.x + (dx > 0 ? controlOffset : -controlOffset);
+        const cp1y = start.y + droopFactor * 0.3;
+        const cp2x = end.x - (dx > 0 ? controlOffset : -controlOffset);
+        const cp2y = end.y + droopFactor * 0.3;
+        
+        // Create a more complex path with mid-point for realistic droop
+        const midX = (start.x + end.x) / 2;
+        
+        return `M ${start.x} ${start.y} Q ${cp1x} ${cp1y} ${midX} ${midY} T ${end.x} ${end.y}`;
+    }
+    
+    /**
+     * Draw a single patch cable
+     * @param {Object} connection - The connection definition from patchConnections
+     */
+    drawCable(connection) {
+        const startCoords = this.getPortCoordinates(connection.from, connection.fromPort);
+        const endCoords = this.getPortCoordinates(connection.to, connection.toPort);
+        
+        if (!startCoords || !endCoords) {
+            console.warn(`Patch Cable Manager: Could not find coordinates for ${connection.id}`);
+            return;
+        }
+        
+        // Remove existing cable if it exists
+        const existingCable = this.svgElement.querySelector(`#${connection.id}`);
+        if (existingCable) {
+            existingCable.remove();
+        }
+        
+        // Create new path element
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.id = connection.id;
+        path.setAttribute('d', this.createCablePath(startCoords, endCoords));
+        path.classList.add(`patch-cable-${connection.type}`);
+        
+        // Add to SVG
+        this.svgElement.appendChild(path);
+        
+        console.log(`Patch Cable Manager: Drew ${connection.type} cable from ${connection.from} to ${connection.to}`);
+    }
+    
+    /**
+     * Draw all patch cables
+     */
+    drawAllCables() {
+        if (!this.svgElement) return;
+        
+        patchConnections.forEach(connection => {
+            this.drawCable(connection);
+        });
+        
+        console.log('Patch Cable Manager: Drew all patch cables');
+    }
+    
+    /**
+     * Clear all cables
+     */
+    clearAllCables() {
+        if (!this.svgElement) return;
+        
+        this.svgElement.innerHTML = '<!-- Patch cables will be drawn here -->';
+    }
+}
+
+/**
+ * Global Patch Cable Manager Instance
+ */
+let patchCableManager;
+
+/**
  * Initialize P5 Canvas Manager and create wave visualizers
  * Sets up responsive P5.js canvases for all wave visual elements
  */
@@ -516,7 +1000,9 @@ function initializeP5Manager() {
                 visual.id = containerId;
             }
             
-            // Create P5 canvas for this wave visual
+            // Create P5 canvas for all wave types including reverb ripples
+            
+            // Create P5 canvas for other wave visuals
             if (waveType && visual.id) {
                 p5Manager.createWaveCanvas(visual.id, waveType, {
                     amplitude: 45, // Slightly smaller than container
@@ -527,11 +1013,34 @@ function initializeP5Manager() {
                 });
                 
                 console.log(`T.E. Grid Synthesis: Created P5 canvas for ${waveType} wave (${visual.id})`);
+            } else {
+                console.warn(`T.E. Grid Synthesis: Could not create canvas - waveType: ${waveType}, visual.id: ${visual.id}`);
             }
         });
         
         console.log('T.E. Grid Synthesis: P5 Canvas Manager initialized with wave visualizers');
     }, 100); // Small delay to ensure DOM is ready
+}
+
+/**
+ * Initialize Patch Cable Manager and draw signal flow cables
+ * Sets up SVG patch cable visualization after modules are rendered
+ */
+function initializePatchCableManager() {
+    // Create new patch cable manager
+    patchCableManager = new PatchCableManager();
+    
+    // Wait for DOM to be fully rendered before drawing cables
+    setTimeout(() => {
+        if (patchCableManager.initialize()) {
+            // Draw all the hardcoded patch connections
+            patchCableManager.drawAllCables();
+            
+            console.log('T.E. Grid Synthesis: Patch Cable Manager initialized and cables drawn');
+        } else {
+            console.error('T.E. Grid Synthesis: Failed to initialize Patch Cable Manager');
+        }
+    }, 200); // Slightly longer delay to ensure modules and P5 canvases are ready
 }
 
 /**
@@ -612,13 +1121,13 @@ function renderFilterModule(filterData) {
             
             <div class="module-controls">
                 <div class="control-group">
-                    <label class="control-label">TYPE</label>
                     <select class="filter-type-selector" data-param="type">
                         <option value="lowpass" ${filterData.parameters.type === 'lowpass' ? 'selected' : ''}>LPF</option>
                         <option value="highpass" ${filterData.parameters.type === 'highpass' ? 'selected' : ''}>HPF</option>
                         <option value="bandpass" ${filterData.parameters.type === 'bandpass' ? 'selected' : ''}>BPF</option>
                         <option value="notch" ${filterData.parameters.type === 'notch' ? 'selected' : ''}>NOTCH</option>
                     </select>
+                    <div class="wave-visual" data-wave-type="${filterData.parameters.type}"></div>
                 </div>
                 
                 <div class="control-group">
@@ -671,37 +1180,43 @@ function renderEnvelopeModule(envelopeData) {
                 <h3 class="module-title">ENV/VCA-1</h3>
             </div>
             
-            <div class="module-controls">
-                <div class="control-group">
-                    <label class="control-label">ATTACK</label>
-                    <div class="synth-knob envelope-knob" data-param="attack" data-value="${envelopeData.parameters.attack}">
-                        <div class="knob-indicator"></div>
-                    </div>
-                    <span class="control-value">${envelopeData.parameters.attack}s</span>
+            <div class="module-controls envelope-controls">
+                <div class="envelope-canvas-section">
+                    <div class="wave-visual" data-wave-type="adsr"></div>
                 </div>
                 
-                <div class="control-group">
-                    <label class="control-label">DECAY</label>
-                    <div class="synth-knob envelope-knob" data-param="decay" data-value="${envelopeData.parameters.decay}">
-                        <div class="knob-indicator"></div>
+                <div class="envelope-knobs-section">
+                    <div class="control-group">
+                        <label class="control-label">ATTACK</label>
+                        <div class="synth-knob envelope-knob" data-param="attack" data-value="${envelopeData.parameters.attack}">
+                            <div class="knob-indicator"></div>
+                        </div>
+                        <span class="control-value">${envelopeData.parameters.attack}s</span>
                     </div>
-                    <span class="control-value">${envelopeData.parameters.decay}s</span>
-                </div>
-                
-                <div class="control-group">
-                    <label class="control-label">SUSTAIN</label>
-                    <div class="synth-knob envelope-knob" data-param="sustain" data-value="${envelopeData.parameters.sustain}">
-                        <div class="knob-indicator"></div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">DECAY</label>
+                        <div class="synth-knob envelope-knob" data-param="decay" data-value="${envelopeData.parameters.decay}">
+                            <div class="knob-indicator"></div>
+                        </div>
+                        <span class="control-value">${envelopeData.parameters.decay}s</span>
                     </div>
-                    <span class="control-value">${envelopeData.parameters.sustain}</span>
-                </div>
-                
-                <div class="control-group">
-                    <label class="control-label">RELEASE</label>
-                    <div class="synth-knob envelope-knob" data-param="release" data-value="${envelopeData.parameters.release}">
-                        <div class="knob-indicator"></div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">SUSTAIN</label>
+                        <div class="synth-knob envelope-knob" data-param="sustain" data-value="${envelopeData.parameters.sustain}">
+                            <div class="knob-indicator"></div>
+                        </div>
+                        <span class="control-value">${envelopeData.parameters.sustain}</span>
                     </div>
-                    <span class="control-value">${envelopeData.parameters.release}s</span>
+                    
+                    <div class="control-group">
+                        <label class="control-label">RELEASE</label>
+                        <div class="synth-knob envelope-knob" data-param="release" data-value="${envelopeData.parameters.release}">
+                            <div class="knob-indicator"></div>
+                        </div>
+                        <span class="control-value">${envelopeData.parameters.release}s</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -793,6 +1308,10 @@ function renderReverbModule(reverbData) {
             </div>
             
             <div class="module-controls">
+                <div class="control-group reverb-canvas-group">
+                    <div class="wave-visual" data-wave-type="reverb"></div>
+                </div>
+                
                 <div class="control-group">
                     <label class="control-label">DECAY</label>
                     <div class="synth-knob reverb-knob" data-param="decay" data-value="${reverbData.parameters.decay}">
@@ -873,9 +1392,12 @@ function initializeModules() {
         const lfoHTML = renderLFOModule(lfoNode);
         const reverbHTML = renderReverbModule(reverbNode);
         
-        // Create a module container with flex layout and spacer
+        // Create a module container with flex layout, SVG overlay, and spacer
         appContainer.innerHTML = `
-            <div class="modules-container">
+            <div class="modules-container" style="position: relative;">
+                <svg id="patch-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Patch cables will be drawn here -->
+                </svg>
                 ${oscillatorHTML}
                 ${filterHTML}
                 ${envelopeHTML}
@@ -890,37 +1412,21 @@ function initializeModules() {
         keyboardContainer.className = 'keyboard-container';
         keyboardContainer.innerHTML = `
             <div class="virtual-keyboard">
-                <div class="keyboard-row">
-                    <div class="key-group">
-                        <div class="key white-key" data-note="C3">C</div>
-                        <div class="key black-key" data-note="C#3">C#</div>
-                    </div>
-                    <div class="key-group">
-                        <div class="key white-key" data-note="D3">D</div>
-                        <div class="key black-key" data-note="D#3">D#</div>
-                    </div>
-                    <div class="key-group">
-                        <div class="key white-key" data-note="E3">E</div>
-                    </div>
-                    <div class="key-group">
-                        <div class="key white-key" data-note="F3">F</div>
-                        <div class="key black-key" data-note="F#3">F#</div>
-                    </div>
-                    <div class="key-group">
-                        <div class="key white-key" data-note="G3">G</div>
-                        <div class="key black-key" data-note="G#3">G#</div>
-                    </div>
-                    <div class="key-group">
-                        <div class="key white-key" data-note="A3">A</div>
-                        <div class="key black-key" data-note="A#3">A#</div>
-                    </div>
-                    <div class="key-group">
-                        <div class="key white-key" data-note="B3">B</div>
-                    </div>
-                    <div class="key-group">
-                        <div class="key white-key" data-note="C4">C</div>
-                    </div>
-                </div>
+                <div class="key white-key" data-note="C3"></div>
+                <div class="key white-key" data-note="D3"></div>
+                <div class="key white-key" data-note="E3"></div>
+                <div class="key white-key" data-note="F3"></div>
+                <div class="key white-key" data-note="G3"></div>
+                <div class="key white-key" data-note="A3"></div>
+                <div class="key white-key" data-note="B3"></div>
+                <div class="key white-key" data-note="C4"></div>
+                
+                <!-- Black keys positioned with right edge at white key boundaries -->
+                <div class="key black-key" data-note="C#3" style="left: 8.5%;"></div>
+                <div class="key black-key" data-note="D#3" style="left: 21%;"></div>
+                <div class="key black-key" data-note="F#3" style="left: 46%;"></div>
+                <div class="key black-key" data-note="G#3" style="left: 58.5%;"></div>
+                <div class="key black-key" data-note="A#3" style="left: 71%;"></div>
             </div>
         `;
         document.body.appendChild(keyboardContainer);
@@ -1051,6 +1557,16 @@ function setupKnobInteraction() {
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
                 
+                // Update ADSR visual if this is an envelope parameter
+                if (moduleId === 'envelope-1' && p5Manager) {
+                    const adsrCanvas = document.querySelector('[data-wave-type="adsr"]');
+                    if (adsrCanvas && adsrCanvas.id) {
+                        // The P5 canvas will automatically use the updated envelopeNode.parameters
+                        // on the next frame since calculateADSRValue() reads from window.envelopeNode
+                        console.log(`T.E. Grid Synthesis: ADSR visual will update for ${param} = ${newValue}`);
+                    }
+                }
+                
                 // Update code display in real-time
                 updateCodeDisplay();
             }
@@ -1151,8 +1667,8 @@ function updateKnobVisuals(knob, param, value) {
  * Handles change events for dropdown selectors (waveform, filter type, etc.)
  */
 function setupSelectorInteraction() {
-    // Waveform selector
-    const waveformSelectors = document.querySelectorAll('.waveform-selector');
+    // Waveform selector (includes both oscillator and LFO selectors)
+    const waveformSelectors = document.querySelectorAll('.waveform-selector, .lfo-type-selector');
     waveformSelectors.forEach(selector => {
         selector.addEventListener('change', (e) => {
             const param = selector.dataset.param;
@@ -1165,6 +1681,8 @@ function setupSelectorInteraction() {
             
             if (moduleId === 'oscillator-1') {
                 targetNode = oscillatorNode;
+            } else if (moduleId === 'lfo-1') {
+                targetNode = lfoNode;
             }
             
             if (targetNode && param) {
@@ -1174,8 +1692,8 @@ function setupSelectorInteraction() {
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
                 
-                // Update P5 wave visual if it exists
-                if (p5Manager && param === 'waveform') {
+                // Update P5 wave visual if it exists (for both waveform and type parameters)
+                if (p5Manager && (param === 'waveform' || param === 'type')) {
                     const waveVisual = moduleElement.querySelector('.wave-visual');
                     if (waveVisual && waveVisual.id) {
                         // Update wave visual data attribute
@@ -1184,7 +1702,7 @@ function setupSelectorInteraction() {
                         // Update P5 canvas wave type
                         p5Manager.updateWaveType(waveVisual.id, newValue);
                         
-                        console.log(`T.E. Grid Synthesis: Updated P5 wave visual to ${newValue}`);
+                        console.log(`T.E. Grid Synthesis: Updated P5 wave visual to ${newValue} (param: ${param})`);
                     }
                 }
                 

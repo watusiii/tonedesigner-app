@@ -74,6 +74,12 @@
     /* Grid System */
     --color-grid-dot: var(--color-gray-300);
 
+    /* Patch Cable Colors */
+    --color-cable-audio: var(--color-te-yellow);
+    /* Yellow for audio signals */
+    --color-cable-cv: var(--color-te-blue);
+    /* Blue for CV/control signals */
+
     /* ───────────────────────────────────────────────────────────────────────────
        CORNER PORT POSITIONING - Standardized positions for all corner elements
        ─────────────────────────────────────────────────────────────────────────── */
@@ -243,25 +249,33 @@ body {
     flex-direction: column;
 }
 
-/* Header Styling */
+/* Header Styling - Module-like design */
 header {
-    background-color: var(--color-background-surface);
+    background-color: var(--color-pure-white);
     color: var(--color-text-primary);
-    padding: var(--space-3) var(--space-5);
-    text-align: left;
-    border-bottom: var(--border-width-thin) solid var(--color-border-light);
+    padding: var(--space-4);
+    margin: 0;
+    border: var(--border-width-thin) solid var(--color-border-medium);
+    border-bottom-width: var(--border-width-base);
+    /* 2px bottom border like modules */
+    border-radius: 0;
+    /* No radius for full width */
+    text-align: center;
 }
 
 header h1 {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-normal);
-    letter-spacing: var(--letter-spacing-wide);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-widest);
+    color: var(--color-gray-500);
+    margin: 0;
 }
 
 /* Main App Container - Primary Work Surface */
 #app-container {
     flex: 1;
-    padding: var(--space-8);
+    padding: 0;
+    /* No padding for full width */
     overflow-y: auto;
     min-height: 0;
 }
@@ -270,6 +284,45 @@ header h1 {
 .scroll-spacer {
     height: calc(var(--keyboard-height) + var(--space-24));
     flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PATCH CABLE SVG OVERLAY - VISUAL SIGNAL FLOW
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* SVG Patch Cable Overlay */
+#patch-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Don't interfere with module interactions */
+    z-index: 10;
+    /* Above modules, below UI overlays */
+}
+
+/* Audio Cable Styling */
+.patch-cable-audio {
+    fill: none;
+    stroke: var(--color-cable-audio);
+    stroke-width: 4px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.9;
+}
+
+/* CV Cable Styling */
+.patch-cable-cv {
+    fill: none;
+    stroke: var(--color-cable-cv);
+    stroke-width: 3px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.8;
+    stroke-dasharray: 5, 5;
+    /* Dashed line to distinguish from audio */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -431,7 +484,8 @@ header h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-4) var(--space-8);
+    padding: 0;
+    /* Full bleed keyboard */
     z-index: 1000;
 }
 
@@ -459,83 +513,82 @@ header h1 {
     transform: translateY(0);
 }
 
-/* Virtual Keyboard Styling - Simple Grid Approach */
+/* Virtual Keyboard - 8 white keys with calculated black key positions */
 .virtual-keyboard {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
     width: 100%;
-    padding: var(--space-2);
+    height: 100%;
+    gap: 0;
+    position: relative;
+    /* For absolute positioning of black keys */
 }
 
-.keyboard-row {
+.key {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
     display: flex;
-    gap: 2px;
-    align-items: flex-end;
-}
-
-.key-group {
-    display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 2px;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .white-key {
-    background-color: var(--color-background-surface);
+    flex: 1;
+    /* Evenly divide container */
+    background-color: var(--color-pure-white);
+    color: var(--color-pure-black);
+    border: var(--border-width-thin) solid var(--color-pure-black);
+    border-right: none;
+    /* No right border to avoid doubling */
+    min-height: 60px;
+    z-index: 1;
+    /* Below black keys */
+}
+
+.white-key:last-child {
+    border-right: var(--border-width-thin) solid var(--color-pure-black);
+    /* Restore right border for last key */
+}
+
+.black-key {
+    position: absolute;
+    top: 0;
+    background-color: var(--color-pure-black);
+    color: var(--color-pure-white);
     border: var(--border-width-thin) solid var(--color-pure-black);
     border-radius: var(--border-radius-base);
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-family-mono);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-primary);
-    cursor: pointer;
-    user-select: none;
-    transition: all var(--transition-fast);
+    width: 8%;
+    /* Calculated width for black keys */
+    height: 65%;
+    /* Shorter than white keys */
+    transform: none;
+    /* Direct positioning */
+    z-index: 2;
+    /* Above white keys */
+    font-size: 10px;
+}
+
+.white-key.pressed,
+.white-key:active {
+    background-color: var(--color-gray-200);
 }
 
 .white-key:hover {
     background-color: var(--color-gray-100);
 }
 
-.white-key:active,
-.white-key.pressed {
-    background-color: var(--color-gray-300);
-    transform: scale(0.95);
-}
-
-.black-key {
-    background-color: var(--color-pure-black);
-    border: var(--border-width-thin) solid var(--color-pure-black);
-    border-radius: var(--border-radius-full);
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-family-mono);
-    font-size: 8px;
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-pure-white);
-    cursor: pointer;
-    user-select: none;
-    transition: all var(--transition-fast);
+.black-key.pressed,
+.black-key:active {
+    background-color: var(--color-gray-700);
 }
 
 .black-key:hover {
     background-color: var(--color-gray-800);
-}
-
-.black-key:active,
-.black-key.pressed {
-    background-color: var(--color-gray-600);
-    transform: scale(0.9);
 }
 
 /* Modules Container - Full width layout */
@@ -568,16 +621,18 @@ header h1 {
     /* For absolute positioning of corner ports */
 }
 
-/* First module gets top rounded corners */
+/* First module connects to header (no top border) */
 .synth-module:first-child {
-    border-top-left-radius: var(--border-radius-lg);
-    border-top-right-radius: var(--border-radius-lg);
+    border-top: none;
+    /* No top border to seamlessly connect to header */
+    margin-top: -1px;
+    /* Overlap with header border */
 }
 
-/* Last module gets bottom rounded corners and thicker border */
+/* Last module gets thicker border but no rounded corners for full width */
 .synth-module:last-child {
-    border-bottom-left-radius: var(--border-radius-lg);
-    border-bottom-right-radius: var(--border-radius-lg);
+    border-radius: 0;
+    /* No radius for full width */
     border-bottom-width: var(--border-width-thick);
     margin-bottom: 0;
 }
@@ -621,11 +676,94 @@ header h1 {
     position: relative;
     border-right: var(--border-width-thin) solid var(--color-pure-black);
     padding: var(--space-4);
+    /* Standard padding */
     aspect-ratio: 1;
+    /* Back to 1:1 for all control groups */
+}
+
+/* Golden ratio and full bleed only for dropdown/canvas containers */
+.control-group:has(.waveform-selector),
+.control-group:has(.filter-type-selector),
+.control-group:has(.lfo-type-selector) {
+    padding: 0;
+    /* Full bleed for selector containers */
+    align-items: stretch;
+    /* Full width alignment */
+    aspect-ratio: 1.618;
+    /* Golden ratio for dropdown/canvas containers */
+    gap: 0;
+    /* No gap for seamless full bleed */
 }
 
 .control-group:last-child {
     border-right: none;
+}
+
+/* Envelope Module Special Layout */
+.envelope-controls {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    height: auto;
+}
+
+.envelope-canvas-section {
+    flex: 1;
+    background-color: var(--color-pure-white);
+    border-right: var(--border-width-thin) solid var(--color-pure-black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    /* Same as other control groups */
+    position: relative;
+}
+
+.envelope-canvas-section .wave-visual {
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+}
+
+.envelope-knobs-section {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 0;
+}
+
+.envelope-knobs-section .control-group {
+    aspect-ratio: 1;
+    border-right: var(--border-width-thin) solid var(--color-pure-black);
+    border-bottom: var(--border-width-thin) solid var(--color-pure-black);
+}
+
+.envelope-knobs-section .control-group:nth-child(even) {
+    border-right: none;
+}
+
+.envelope-knobs-section .control-group:nth-child(n+3) {
+    border-bottom: none;
+}
+
+/* Reverb Canvas Styling - Simple white canvas at 1:1 ratio with knobs */
+.reverb-canvas-group {
+    flex: 1 !important;
+    /* Same width as control groups for 1:1 ratio */
+    padding: 0 !important;
+    /* Full bleed */
+    align-items: stretch !important;
+    /* Full height */
+}
+
+.reverb-canvas-group .wave-visual {
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 0;
+    margin: 0;
 }
 
 .control-label {
@@ -650,13 +788,19 @@ header h1 {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     background-color: var(--color-gray-100);
-    border: var(--border-width-thin) solid var(--color-pure-black);
-    border-radius: var(--border-radius-base);
+    border: none;
+    /* Full bleed - no borders */
+    border-radius: 0;
+    /* Full bleed - no radius */
     padding: var(--space-2) var(--space-3);
     color: var(--color-text-primary);
     width: 100%;
+    flex: 0 0 auto;
+    /* Don't grow, fixed size for dropdown */
     text-align: center;
     cursor: pointer;
+    margin: 0;
+    /* Full bleed - no margins */
 }
 
 .waveform-selector:focus {
@@ -670,13 +814,19 @@ header h1 {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     background-color: var(--color-gray-100);
-    border: var(--border-width-thin) solid var(--color-pure-black);
-    border-radius: var(--border-radius-base);
+    border: none;
+    /* Full bleed - no borders */
+    border-radius: 0;
+    /* Full bleed - no radius */
     padding: var(--space-2) var(--space-3);
     color: var(--color-text-primary);
     width: 100%;
+    flex: 0 0 auto;
+    /* Don't grow, fixed size for dropdown */
     text-align: center;
     cursor: pointer;
+    margin: 0;
+    /* Full bleed - no margins */
 }
 
 .filter-type-selector:focus {
@@ -690,13 +840,19 @@ header h1 {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     background-color: var(--color-gray-100);
-    border: var(--border-width-thin) solid var(--color-pure-black);
-    border-radius: var(--border-radius-base);
+    border: none;
+    /* Full bleed - no borders */
+    border-radius: 0;
+    /* Full bleed - no radius */
     padding: var(--space-2) var(--space-3);
     color: var(--color-text-primary);
     width: 100%;
+    flex: 0 0 auto;
+    /* Don't grow, fixed size for dropdown */
     text-align: center;
     cursor: pointer;
+    margin: 0;
+    /* Full bleed - no margins */
 }
 
 .lfo-type-selector:focus {
@@ -709,9 +865,12 @@ header h1 {
     width: 100%;
     flex: 1;
     background-color: var(--color-pure-white);
-    border: var(--border-width-thin) solid var(--color-pure-black);
-    border-radius: var(--border-radius-base);
-    margin-top: var(--space-2);
+    border: none;
+    /* Full bleed - no borders */
+    border-radius: 0;
+    /* Full bleed - no radius */
+    margin: 0;
+    /* Full bleed - no margins */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -866,11 +1025,12 @@ header h1 {
     letter-spacing: var(--letter-spacing-wide);
 }
 
-/* Patch Port Styling - Small corner squares */
+/* Patch Port Styling - Circular ports */
 .patch-port {
     width: var(--patch-port-size);
     height: var(--patch-port-size);
-    border-radius: var(--border-radius-base);
+    border-radius: var(--border-radius-full);
+    /* Fully circular */
     border: var(--border-width-thin) solid;
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -924,7 +1084,8 @@ header h1 {
     border-color: var(--color-te-blue-dark);
     width: var(--gate-port-size);
     height: var(--gate-port-size);
-    border-radius: var(--border-radius-base);
+    border-radius: var(--border-radius-full);
+    /* Circular like other ports */
 }
 
 .patch-port.gate-input:hover {
@@ -948,7 +1109,7 @@ header h1 {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     #app-container {
-        padding: var(--space-4);
+        /* padding: var(--space-4); */
     }
 
     .synth-module {
