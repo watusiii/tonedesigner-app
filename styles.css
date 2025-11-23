@@ -1106,6 +1106,40 @@ header h1 {
     transform: scale(1.1);
 }
 
+/* Multiplier Selector - Radial toggle buttons */
+.multiplier-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.multiplier-option {
+    font-family: var(--font-family-mono);
+    font-size: 8px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+    color: var(--color-text-secondary);
+    background-color: var(--color-gray-200);
+    border: 1px solid var(--color-gray-400);
+    border-radius: var(--border-radius-sm);
+    padding: 2px 4px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+    min-width: 20px;
+}
+
+.multiplier-option:hover {
+    background-color: var(--color-gray-300);
+    border-color: var(--color-gray-500);
+}
+
+.multiplier-option.active {
+    background-color: var(--color-te-purple);
+    color: var(--color-pure-white);
+    border-color: var(--color-te-purple-dark);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     #app-container {

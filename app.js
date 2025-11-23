@@ -142,6 +142,9 @@ async function setupSynth() {
         // Setup selector functionality
         setupSelectorInteraction();
         
+        // Setup multiplier functionality
+        setupMultiplierInteraction();
+        
         // Setup virtual keyboard
         setupVirtualKeyboard();
         
@@ -271,7 +274,8 @@ const lfoNode = {
         frequency: 1,      // Speed of modulation in Hz
         type: "sine",      // Waveform of control signal
         min: 200,          // Minimum filter frequency
-        max: 5000          // Maximum filter frequency
+        max: 5000,         // Maximum filter frequency
+        multiplier: 1      // Frequency multiplier (1x or 10x)
     }
 };
 
@@ -436,8 +440,13 @@ class P5CanvasManager {
      * @returns {boolean} - True if this canvas is in an LFO module
      */
     isLFOModule(containerId) {
-        // DISABLE LFO smooth rendering - use pixel matrix like VCF
-        return false;
+        if (!containerId) return false;
+        
+        const container = document.getElementById(containerId);
+        if (!container) return false;
+        
+        const module = container.closest('.synth-module');
+        return module && module.dataset.moduleId && module.dataset.moduleId.includes('lfo');
     }
     
     /**
@@ -466,14 +475,17 @@ class P5CanvasManager {
         for (let i = 0; i <= resolution; i++) {
             const x = p.map(i, 0, resolution, 0, width);
             
-            // Get actual LFO frequency INSIDE the loop like ADSR does
+            // Get actual LFO frequency with multiplier INSIDE the loop like ADSR does
             let lfoFrequency = 1; // Default fallback
-            if (window.lfoNode && window.lfoNode.parameters) {
-                lfoFrequency = parseFloat(window.lfoNode.parameters.frequency) || 1;
+            let multiplier = 1; // Default multiplier
+            if (lfoNode && lfoNode.parameters) {
+                lfoFrequency = parseFloat(lfoNode.parameters.frequency) || 1;
+                multiplier = parseFloat(lfoNode.parameters.multiplier) || 1;
             }
             
-            // Calculate cycles to display based on LFO frequency
-            const cyclesToShow = lfoFrequency * 10;
+            // Apply multiplier and calculate cycles
+            const effectiveFreq = lfoFrequency * multiplier;
+            const cyclesToShow = effectiveFreq * 2;
             
             const t = p.map(i, 0, resolution, 0, p.TWO_PI * cyclesToShow); // Use calculated cycles
             let waveValue = 0;
@@ -510,26 +522,6 @@ class P5CanvasManager {
         p.strokeWeight(0.5);
         p.line(0, centerY, width, centerY);
         
-        // SHOW THE FREQUENCY NUMBER ON THE VISUAL - TRY ALL POSSIBLE SOURCES
-        let displayFreq = 1;
-        let source = "default";
-        
-        // Try window.lfoNode
-        if (window.lfoNode && window.lfoNode.parameters && window.lfoNode.parameters.frequency) {
-            displayFreq = parseFloat(window.lfoNode.parameters.frequency);
-            source = "window.lfoNode";
-        }
-        // Try global lfoNode
-        else if (typeof lfoNode !== 'undefined' && lfoNode.parameters && lfoNode.parameters.frequency) {
-            displayFreq = parseFloat(lfoNode.parameters.frequency);
-            source = "global lfoNode";
-        }
-        
-        p.fill(255); // White text
-        p.textSize(12);
-        p.textAlign(p.CENTER, p.CENTER);
-        p.text(`${displayFreq.toFixed(2)}Hz`, width/2, height/2 - 10);
-        p.text(`(${source})`, width/2, height/2 + 10);
     }
     
     /**
@@ -637,18 +629,6 @@ class P5CanvasManager {
             }
         }
         
-        // Show frequency only on LFO visual
-        const container = document.getElementById(config.containerId);
-        const module = container?.closest('.synth-module');
-        const isLFO = module && module.dataset.moduleId && module.dataset.moduleId.includes('lfo');
-        
-        if (isLFO && lfoNode && lfoNode.parameters) {
-            const freq = lfoNode.parameters.frequency;
-            p.fill(255, 0, 0); // Red text
-            p.textSize(10);
-            p.textAlign(p.CENTER, p.CENTER);
-            p.text(`${freq}Hz`, width/2, height - 10);
-        }
     }
     
     /**
@@ -1391,6 +1371,12 @@ function renderLFOModule(lfoData) {
                         <div class="patch-port cv-output" data-port-type="cv-out" data-signal="cv"></div>
                         <span class="corner-port-label">CV</span>
                     </div>
+                    <div class="corner-port-input">
+                        <div class="multiplier-selector" data-param="multiplier">
+                            <div class="multiplier-option ${lfoData.parameters.multiplier === 1 ? 'active' : ''}" data-value="1">1X</div>
+                            <div class="multiplier-option ${lfoData.parameters.multiplier === 10 ? 'active' : ''}" data-value="10">10X</div>
+                        </div>
+                    </div>
                     <label class="control-label">FREQ</label>
                     <div class="synth-knob lfo-knob" data-param="frequency" data-value="${lfoData.parameters.frequency}">
                         <div class="knob-indicator"></div>
@@ -1500,12 +1486,15 @@ function syncToneEngine(node) {
         console.log(`T.E. Grid Synthesis: Synced ${node.id} - attack: ${node.parameters.attack}s, decay: ${node.parameters.decay}s, sustain: ${node.parameters.sustain}, release: ${node.parameters.release}s`);
     } else if (node.id === "lfo-1" && lfoToneObject) {
         // Update Tone.js LFO parameters from node data
-        lfoToneObject.frequency.value = node.parameters.frequency;
+        const multiplier = node.parameters.multiplier || 1;
+        const effectiveFreq = node.parameters.frequency * multiplier;
+        
+        lfoToneObject.frequency.value = effectiveFreq;
         lfoToneObject.type = node.parameters.type;
         lfoToneObject.min = node.parameters.min;
         lfoToneObject.max = node.parameters.max;
         
-        console.log(`T.E. Grid Synthesis: Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.type}, min: ${node.parameters.min}Hz, max: ${node.parameters.max}Hz`);
+        console.log(`T.E. Grid Synthesis: Synced ${node.id} - freq: ${effectiveFreq}Hz (${node.parameters.frequency}Hz x ${multiplier}), type: ${node.parameters.type}, min: ${node.parameters.min}Hz, max: ${node.parameters.max}Hz`);
     } else if (node.id === "reverb-1" && reverbToneObject) {
         // Update Tone.js Reverb parameters from node data
         reverbToneObject.decay = node.parameters.decay;
@@ -1629,19 +1618,19 @@ function setupKnobInteraction() {
             let newValue = startValue;
             
             if (param === 'frequency') {
-                // Check if this is an LFO frequency (different range than VCO)
+                // Check if this is an LFO frequency
                 const moduleElement = knob.closest('.synth-module');
                 const moduleId = moduleElement.dataset.moduleId;
                 
                 if (moduleId === 'lfo-1') {
-                    // LFO frequency range: 0.1Hz to 10Hz with logarithmic scaling
+                    // LFO frequency range: 1Hz to 20Hz with logarithmic scaling
                     const sensitivity = 1.5;
                     const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
-                    newValue = Math.max(0.1, Math.min(10, startValue * multiplier));
+                    newValue = Math.max(1, Math.min(20, startValue * multiplier));
                     newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
                 } else {
                     // VCO frequency range: 20Hz to 20000Hz with logarithmic scaling
-                    const sensitivity = 2; // Adjust for more/less sensitivity
+                    const sensitivity = 2;
                     const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
                     newValue = Math.max(20, Math.min(20000, startValue * multiplier));
                     newValue = Math.round(newValue * 10) / 10; // Round to 1 decimal
@@ -1761,19 +1750,19 @@ function setupKnobInteraction() {
             let newValue = startValue;
             
             if (param === 'frequency') {
-                // Check if this is an LFO frequency (different range than VCO)
+                // Check if this is an LFO frequency
                 const moduleElement = knob.closest('.synth-module');
                 const moduleId = moduleElement.dataset.moduleId;
                 
                 if (moduleId === 'lfo-1') {
-                    // LFO frequency range: 0.1Hz to 10Hz with logarithmic scaling
+                    // LFO frequency range: 1Hz to 20Hz with logarithmic scaling
                     const sensitivity = 1.5;
                     const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
-                    newValue = Math.max(0.1, Math.min(10, startValue * multiplier));
+                    newValue = Math.max(1, Math.min(20, startValue * multiplier));
                     newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
                 } else {
                     // VCO frequency range: 20Hz to 20000Hz with logarithmic scaling
-                    const sensitivity = 2; // Adjust for more/less sensitivity
+                    const sensitivity = 2;
                     const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
                     newValue = Math.max(20, Math.min(20000, startValue * multiplier));
                     newValue = Math.round(newValue * 10) / 10; // Round to 1 decimal
@@ -1904,14 +1893,14 @@ function updateKnobVisuals(knob, param, value) {
         let displayText = '';
         
         if (param === 'frequency') {
-            // Check if this is an LFO frequency (different range than VCO)
+            // Check if this is an LFO frequency
             const moduleElement = knob.closest('.synth-module');
             const moduleId = moduleElement?.dataset.moduleId;
             
             if (moduleId === 'lfo-1') {
-                // Map LFO frequency (0.1-10 Hz) to rotation (-135° to +135°)
-                const logMin = Math.log(0.1);
-                const logMax = Math.log(10);
+                // Map LFO frequency (1-20 Hz) to rotation (-135° to +135°)
+                const logMin = Math.log(1);
+                const logMax = Math.log(20);
                 const logValue = Math.log(value);
                 const normalized = (logValue - logMin) / (logMax - logMin);
                 rotation = -135 + (normalized * 270); // -135° to +135°
@@ -2106,6 +2095,48 @@ function setupSelectorInteraction() {
                 updateCodeDisplay();
                 
                 console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}`);
+            }
+        });
+    });
+}
+
+/**
+ * Setup Multiplier Interaction
+ * Adds event listeners for LFO multiplier selector
+ */
+function setupMultiplierInteraction() {
+    // LFO multiplier selector
+    const multiplierOptions = document.querySelectorAll('.multiplier-option');
+    multiplierOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+            const selector = option.closest('.multiplier-selector');
+            const param = selector.dataset.param;
+            const newValue = parseInt(option.dataset.value);
+            
+            // Determine which node to update based on module
+            const moduleElement = option.closest('.synth-module');
+            const moduleId = moduleElement.dataset.moduleId;
+            let targetNode;
+            
+            if (moduleId === 'lfo-1') {
+                targetNode = lfoNode;
+            }
+            
+            if (targetNode && param) {
+                // Update data structure
+                targetNode.parameters[param] = newValue;
+                
+                // Sync with Tone.js (this will apply the multiplier to the actual LFO frequency)
+                syncToneEngine(targetNode);
+                
+                // Update visual active state
+                selector.querySelectorAll('.multiplier-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                
+                // Update code display in real-time
+                updateCodeDisplay();
+                
+                console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}X`);
             }
         });
     });
