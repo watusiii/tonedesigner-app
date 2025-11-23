@@ -1223,11 +1223,6 @@ function renderEnvelopeModule(envelopeData) {
 function renderLFOModule(lfoData) {
     return `
         <div class="synth-module" data-module-id="${lfoData.id}">
-            <div class="corner-port-output">
-                <div class="patch-port cv-output" data-port-type="cv-out" data-signal="cv"></div>
-                <span class="corner-port-label">CV</span>
-            </div>
-            
             <div class="module-header">
                 <h3 class="module-title">LFO-1</h3>
             </div>
@@ -1244,6 +1239,10 @@ function renderLFOModule(lfoData) {
                 </div>
                 
                 <div class="control-group">
+                    <div class="corner-port-output">
+                        <div class="patch-port cv-output" data-port-type="cv-out" data-signal="cv"></div>
+                        <span class="corner-port-label">CV</span>
+                    </div>
                     <label class="control-label">FREQ</label>
                     <div class="synth-knob lfo-knob" data-param="frequency" data-value="${lfoData.parameters.frequency}">
                         <div class="knob-indicator"></div>
@@ -1924,13 +1923,24 @@ function setupSelectorInteraction() {
  */
 function playKey(note) {
     if (vco1ToneObject && envelopeToneObject) {
-        // Set the oscillator frequency to the note
-        vco1ToneObject.frequency.setValueAtTime(note, Tone.now());
+        // Get base frequency from VCO knob setting
+        const baseFrequency = oscillatorNode.parameters.frequency;
+        
+        // Convert note to frequency and calculate ratio
+        const noteFrequency = Tone.Frequency(note).toFrequency();
+        const C4Frequency = Tone.Frequency("C4").toFrequency(); // Reference frequency (261.63 Hz)
+        const ratio = noteFrequency / C4Frequency;
+        
+        // Apply the note ratio to the base frequency from the knob
+        const finalFrequency = baseFrequency * ratio;
+        
+        // Set the oscillator frequency
+        vco1ToneObject.frequency.setValueAtTime(finalFrequency, Tone.now());
         
         // Trigger the envelope with a short duration
         envelopeToneObject.triggerAttackRelease("8n", Tone.now());
         
-        console.log(`T.E. Grid Synthesis: Playing note ${note}`);
+        console.log(`T.E. Grid Synthesis: Playing note ${note} at ${finalFrequency.toFixed(2)}Hz (base: ${baseFrequency}Hz)`);
     }
 }
 
