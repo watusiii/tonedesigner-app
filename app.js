@@ -143,8 +143,7 @@ async function setupSynth() {
         // Initialize P5 Canvas Manager
         initializeP5Manager();
         
-        // Initialize Patch Cable Manager
-        initializePatchCableManager();
+        // Cable visual system removed - keeping data structure only
         
         console.log('T.E. Grid Synthesis: Synthesizer platform initialized');
         
@@ -336,7 +335,10 @@ let synthNodes = [];
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
  * P5 WAVE VISUALIZER SYSTEM - MODULAR CANVAS MANAGEMENT
+ * ═══════════════════════════════════════════════════════════════════════════════
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -1059,208 +1061,228 @@ function getToneObjectById(moduleId) {
 }
 
 /**
- * Patch Cable Manager - Handles SVG cable drawing and coordinate tracking
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * INTERACTIVE DRAG-AND-DROP PATCHING SYSTEM
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
-class PatchCableManager {
-    constructor() {
-        this.svgElement = null;
-        this.cables = new Map();
-    }
+
+/**
+ * Initialize the drag-and-drop patching system
+ * Call this after modules are rendered and patch cables are drawn
+ */
+
+/**
+ * Set up event listeners for all patch ports
+ */
+function setupPortEventListeners() {
+    const ports = document.querySelectorAll('.patch-port');
     
-    /**
-     * Initialize the patch cable system
-     */
-    initialize() {
-        this.svgElement = document.getElementById('patch-svg');
-        if (!this.svgElement) {
-            console.error('Patch Cable Manager: SVG element not found');
-            return false;
-        }
-        
-        // Setup resize listener
-        window.addEventListener('resize', () => {
-            this.drawAllCables();
-        });
-        
-        return true;
-    }
+    ports.forEach(port => {
+        port.addEventListener('mousedown', handlePortMouseDown);
+    });
     
-    /**
-     * Get absolute coordinates of a patch port or knob
-     * @param {string} moduleId - The module ID (e.g., 'oscillator-1')
-     * @param {string} portType - The port type (e.g., 'audio-output', 'frequency-knob')
-     * @returns {Object|null} - {x, y} coordinates or null if not found
-     */
-    getPortCoordinates(moduleId, portType) {
-        const module = document.querySelector(`[data-module-id="${moduleId}"]`);
-        if (!module) return null;
+    console.log(`🖱️ Set up event listeners for ${ports.length} patch ports`);
+}
+
+/**
+ * Handle mousedown on a patch port - start dragging
+ * @param {MouseEvent} e - Mouse event
+ */
+
+/**
+ * Set up global mouse handlers for dragging
+ */
+function setupGlobalMouseHandlers() {
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+}
+
+/**
+ * Handle global mouse move - update ghost cable
+ * @param {MouseEvent} e - Mouse event
+ */
+function handleGlobalMouseMove(e) {
+    if (!isDragging || !ghostCable) return;
+    
+    // Get source port coordinates
+    const sourcePort = document.querySelector(`[data-port-type="${dragSourceType}-out"]`);
+    if (!sourcePort) return;
+    
+    const sourceCoords = getPortCoordinates(sourcePort);
+    const mouseCoords = { x: e.clientX, y: e.clientY };
+    
+    // Update ghost cable path
+    updateGhostCable(sourceCoords, mouseCoords);
+}
+
+/**
+ * Handle global mouse up - complete or cancel connection
+ * @param {MouseEvent} e - Mouse event
+ */
+function handleGlobalMouseUp(e) {
+    if (!isDragging) return;
+    
+    console.log('🖱️ Ending drag operation');
+    
+    // Find target element under cursor
+    const targetElement = document.elementFromPoint(e.clientX, e.clientY);
+    const targetPort = targetElement?.closest('.patch-port');
+    
+    if (targetPort) {
+        const targetPortInfo = getPortInfo(targetPort);
         
-        let targetElement = null;
-        
-        // Find the target element based on port type
-        if (portType.includes('knob')) {
-            // For knob targets (CV connections), find the knob by parameter name
-            const paramName = portType.replace('-knob', '');
-            targetElement = module.querySelector(`[data-param="${paramName}"]`);
+        // Validate connection
+        if (isValidConnection(dragSourcePort, `${targetPortInfo.moduleId}/${targetPortInfo.portName}`, dragSourceType, targetPortInfo)) {
+            createConnection(dragSourcePort, `${targetPortInfo.moduleId}/${targetPortInfo.portName}`, dragSourceType);
         } else {
-            // For patch ports, find by port type class
-            targetElement = module.querySelector(`.patch-port.${portType.replace('-', '-')}`);
+            console.log('🖱️ Invalid connection attempt');
         }
-        
-        if (!targetElement) return null;
-        
-        // Get the element's position relative to the SVG container
-        const svgRect = this.svgElement.getBoundingClientRect();
-        const elementRect = targetElement.getBoundingClientRect();
-        
-        return {
-            x: elementRect.left + elementRect.width / 2 - svgRect.left,
-            y: elementRect.top + elementRect.height / 2 - svgRect.top
-        };
     }
     
-    /**
-     * Create a Bezier curve path between two points with realistic cable droop
-     * @param {Object} start - Starting coordinates {x, y}
-     * @param {Object} end - Ending coordinates {x, y}
-     * @returns {string} - SVG path string
-     */
-    createCablePath(start, end) {
-        const dx = end.x - start.x;
-        const dy = end.y - start.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Calculate droop amount based on cable length (longer cables droop more)
-        const droopFactor = Math.min(distance * 0.15, 60); // Max droop of 60px
-        const midY = (start.y + end.y) / 2 + droopFactor;
-        
-        // Control point offset for natural cable curve
-        const controlOffset = Math.min(Math.abs(dx) * 0.4, 80);
-        
-        // Calculate control points for drooping Bezier curve
-        const cp1x = start.x + (dx > 0 ? controlOffset : -controlOffset);
-        const cp1y = start.y + droopFactor * 0.3;
-        const cp2x = end.x - (dx > 0 ? controlOffset : -controlOffset);
-        const cp2y = end.y + droopFactor * 0.3;
-        
-        // Create a more complex path with mid-point for realistic droop
-        const midX = (start.x + end.x) / 2;
-        
-        return `M ${start.x} ${start.y} Q ${cp1x} ${cp1y} ${midX} ${midY} T ${end.x} ${end.y}`;
+    // Clean up dragging state
+    cleanupDragState();
+}
+
+/**
+ * Create ghost cable SVG element
+ * @param {Object} start - Start coordinates {x, y}
+ * @param {Object} end - End coordinates {x, y}
+ */
+
+/**
+ * Update ghost cable path
+ * @param {Object} start - Start coordinates {x, y}
+ * @param {Object} end - End coordinates {x, y}
+ */
+
+/**
+ * Get port information from DOM element
+ * @param {Element} port - Port DOM element
+ * @returns {Object} Port information
+ */
+function getPortInfo(port) {
+    const portType = port.getAttribute('data-port-type');
+    const signal = port.getAttribute('data-signal');
+    const module = port.closest('.synth-module');
+    const moduleId = module?.getAttribute('data-module-id');
+    
+    // Parse port type (e.g., 'audio-out', 'cv-in')
+    const [signalType, direction] = portType.split('-');
+    const portName = direction === 'out' ? `${signalType}_out` : `${signalType}_in`;
+    
+    return {
+        moduleId,
+        portName,
+        signalType,
+        direction,
+        element: port
+    };
+}
+
+/**
+ * Get absolute coordinates of a port
+ * @param {Element} port - Port DOM element
+ * @returns {Object} Coordinates {x, y}
+ */
+function getPortCoordinates(port) {
+    const rect = port.getBoundingClientRect();
+    const svgRect = document.getElementById('patch-svg')?.getBoundingClientRect();
+    
+    return {
+        x: rect.left + rect.width/2 - (svgRect?.left || 0),
+        y: rect.top + rect.height/2 - (svgRect?.top || 0)
+    };
+}
+
+/**
+ * Validate if a connection is allowed
+ * @param {string} source - Source port ID
+ * @param {string} target - Target port ID  
+ * @param {string} sourceType - Source signal type
+ * @param {Object} targetInfo - Target port information
+ * @returns {boolean} True if connection is valid
+ */
+function isValidConnection(source, target, sourceType, targetInfo) {
+    // Can't connect to same module
+    const [sourceModule] = source.split('/');
+    if (sourceModule === targetInfo.moduleId) {
+        console.log('🖱️ Cannot connect module to itself');
+        return false;
     }
     
-    /**
-     * Draw a single patch cable
-     * @param {Object} connection - The connection definition from patchConnections
-     */
-    drawCable(connection) {
-        const startCoords = this.getPortCoordinates(connection.from, connection.fromPort);
-        const endCoords = this.getPortCoordinates(connection.to, connection.toPort);
-        
-        if (!startCoords || !endCoords) {
-            console.warn(`Patch Cable Manager: Could not find coordinates for ${connection.id}`);
-            return;
-        }
-        
-        // Remove existing cable if it exists
-        const existingCable = this.svgElement.querySelector(`#${connection.id}`);
-        if (existingCable) {
-            existingCable.remove();
-        }
-        
-        // Create new path element
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.id = connection.id;
-        path.setAttribute('d', this.createCablePath(startCoords, endCoords));
-        path.classList.add(`patch-cable-${connection.type}`);
-        
-        // Add to SVG
-        this.svgElement.appendChild(path);
-        
-        console.log(`Patch Cable Manager: Drew ${connection.type} cable from ${connection.from} to ${connection.to}`);
+    // Must connect output to input
+    if (targetInfo.direction !== 'in') {
+        console.log('🖱️ Must connect to input port');
+        return false;
     }
     
-    /**
-     * Draw all patch cables
-     */
-    drawAllCables() {
-        if (!this.svgElement) return;
-        
-        // Convert currentPatchConnections to legacy format for visual rendering
-        const legacyConnections = this.convertToLegacyFormat(currentPatchConnections);
-        
-        legacyConnections.forEach(connection => {
-            this.drawCable(connection);
-        });
-        
-        console.log('Patch Cable Manager: Drew all patch cables');
+    // Signal type must match or be compatible
+    if (sourceType === 'audio' && targetInfo.signalType !== 'audio') {
+        console.log('🖱️ Audio signals must connect to audio inputs');
+        return false;
     }
     
-    /**
-     * Convert currentPatchConnections format to legacy format for visual rendering
-     * @param {Array} connections - Array of currentPatchConnections
-     * @returns {Array} Array of legacy format connections
-     */
-    convertToLegacyFormat(connections) {
-        return connections.map((conn, index) => {
-            // Parse source and target
-            const [fromModule, fromPort] = conn.source.split('/');
-            const [toModule, toPort] = conn.target.split('/');
-            
-            // Handle destination special case
-            if (conn.target === 'destination') {
-                return {
-                    from: fromModule,
-                    fromPort: this.mapPortName(fromPort, 'output'),
-                    to: 'destination',
-                    toPort: 'destination',
-                    type: conn.type,
-                    id: `${fromModule}-to-destination`
-                };
-            }
-            
-            // Standard connection
-            return {
-                from: fromModule,
-                fromPort: this.mapPortName(fromPort, 'output'),
-                to: toModule,
-                toPort: this.mapPortName(toPort, 'input'),
-                type: conn.type,
-                id: `${fromModule}-to-${toModule}-${index}`
-            };
-        });
+    if (sourceType === 'cv' && targetInfo.signalType !== 'cv') {
+        console.log('🖱️ CV signals must connect to CV inputs');
+        return false;
     }
     
-    /**
-     * Map new port names to legacy port names
-     * @param {string} portName - New format port name (e.g., 'audio_out', 'frequency')
-     * @param {string} direction - 'input' or 'output'
-     * @returns {string} Legacy port name
-     */
-    mapPortName(portName, direction) {
-        if (portName === 'audio_out') return 'audio-output';
-        if (portName === 'audio_in') return 'audio-input';
-        if (portName === 'cv_out') return 'cv-output';
-        if (portName === 'frequency') return 'cv-input'; // CV to frequency parameter
-        
-        // Default fallback
-        return direction === 'input' ? 'audio-input' : 'audio-output';
-    }
+    return true;
+}
+
+/**
+ * Create a new connection
+ * @param {string} source - Source port ID
+ * @param {string} target - Target port ID
+ * @param {string} type - Connection type ('audio' or 'cv')
+ */
+function createConnection(source, target, type) {
+    console.log(`🔌 Creating connection: ${source} → ${target} (${type})`);
     
-    /**
-     * Clear all cables
-     */
-    clearAllCables() {
-        if (!this.svgElement) return;
+    // Add to currentPatchConnections
+    currentPatchConnections.push({
+        source,
+        target,
+        type
+    });
+    
+    // Recompile patching
+    compilePatching();
+}
+
+/**
+ * Remove a patch connection
+ * @param {string} source - Source port identifier
+ * @param {string} target - Target port identifier
+ */
+function removePatchConnection(source, target) {
+    console.log(`🗑️ Removing connection: ${source} → ${target}`);
+    
+    // Remove from currentPatchConnections
+    const index = currentPatchConnections.findIndex(conn => 
+        conn.source === source && conn.target === target
+    );
+    
+    if (index !== -1) {
+        currentPatchConnections.splice(index, 1);
+        console.log('🗑️ Connection removed from data structure');
         
-        this.svgElement.innerHTML = '<!-- Patch cables will be drawn here -->';
+        // Recompile patching
+        compilePatching();
+    } else {
+        console.warn('🗑️ Connection not found in data structure');
     }
 }
 
 /**
- * Global Patch Cable Manager Instance
+ * Clean up dragging state
  */
-let patchCableManager;
+
+
+/**
+ * Patch Cable Manager - Handles SVG cable drawing and coordinate tracking
+ */
+
 
 /**
  * Initialize P5 Canvas Manager and create wave visualizers
@@ -1306,26 +1328,6 @@ function initializeP5Manager() {
     }, 100); // Small delay to ensure DOM is ready
 }
 
-/**
- * Initialize Patch Cable Manager and draw signal flow cables
- * Sets up SVG patch cable visualization after modules are rendered
- */
-function initializePatchCableManager() {
-    // Create new patch cable manager
-    patchCableManager = new PatchCableManager();
-    
-    // Wait for DOM to be fully rendered before drawing cables
-    setTimeout(() => {
-        if (patchCableManager.initialize()) {
-            // Draw all the hardcoded patch connections
-            patchCableManager.drawAllCables();
-            
-            console.log('T.E. Grid Synthesis: Patch Cable Manager initialized and cables drawn');
-        } else {
-            console.error('T.E. Grid Synthesis: Failed to initialize Patch Cable Manager');
-        }
-    }, 200); // Slightly longer delay to ensure modules and P5 canvases are ready
-}
 
 /**
  * Render Oscillator Module
@@ -1696,9 +1698,6 @@ function initializeModules() {
         // Create a module container with flex layout, SVG overlay, and spacer
         appContainer.innerHTML = `
             <div class="modules-container" style="position: relative;">
-                <svg id="patch-svg" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Patch cables will be drawn here -->
-                </svg>
                 ${oscillatorHTML}
                 ${filterHTML}
                 ${envelopeHTML}
