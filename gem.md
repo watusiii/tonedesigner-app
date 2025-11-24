@@ -6,6 +6,8 @@ The T.E. Grid is a unique web-based modular synthesizer platform designed to mer
 
 The platform's core value proposition is to serve as a visual programming interface for music production. Its primary output is not only sound but also clean, runnable Tone.js JavaScript code, allowing users to design complex patches visually and then export production-ready code for their own projects.
 
+**Current Implementation Status**: The platform now features a complete Module Factory system and dedicated PatchingController, providing professional-grade modular synthesis with drag-and-drop patching capabilities.
+
 1.1 Design Philosophy: Aesthetics and Usability
 
 The entire design adheres to three core tenets:
@@ -16,47 +18,43 @@ Architectural Simplicity: The system is built around the Synth Node Pattern (Sec
 
 Code as Output: The visual interface serves as a real-time code generator. All user interactions instantly update the exported JavaScript, making the platform a "Visual Code Editor for Sound."
 
-2. Architectural Structure (The Synth Node Pattern)
+2. Architectural Structure (The Module Factory Pattern)
 
-The T.E. Grid is composed entirely of Synth Nodes. A Synth Node is a unified object that encapsulates three synchronized components:
+The T.E. Grid is built around a sophisticated Module Factory system that creates and manages Synth Nodes. Each module is created through the ModuleFactory and consists of three synchronized components:
 
-Component
+| Component | Description | Role |
+|-----------|-------------|------|
+| **1. Node Configuration** | JavaScript object containing the module's id, type, and parameters (e.g., `oscillatorNode`, `filterNode`) | **Source of Truth**: The canonical state of the module |
+| **2. Visual Element** | Rendered HTML/CSS module with knobs, ports, and displays | **Input Layer**: Handles user interaction and visual feedback |  
+| **3. Tone.js Object** | Instantiated Tone.js audio object (e.g., `vco1ToneObject`, `filterToneObject`) | **Sound Engine**: Produces or processes audio |
 
-Description
-
-Role
-
-1. Data Structure
-
-A JavaScript object (oscillatorNode, filterNode, etc.) containing the module's id, type, and current params.
-
-Source of Truth. The canonical state of the module.
-
-2. Visual Component
-
-The rendered HTML/CSS module on the screen (the knobs, ports, display).
-
-Input Layer. Handles user interaction (drag/click).
-
-3. Tone.js Object
-
-The instantiated Tone.js object (vco1ToneObject, filterToneObject).
-
-Sound Engine. Produces or processes audio.
+**Module Factory System (`modules.js`)**: 
+- **ModuleRegistry**: Stores all module definitions
+- **ModuleFactory.create()**: Instantiates modules with synchronized components
+- **Available Modules**: Oscillator, Filter, Envelope, LFO, Reverb
 
 2.1 The Two-Way Synchronization Loop (The Data Bridge)
 
 The entire application relies on a robust two-way data flow that guarantees the visual interface and the sound engine are never out of sync.
 
-User Action $\to$ Data Update: A user drags a knob. This event handler calculates the new value and updates the central Data Structure (oscillatorNode.params).
+**User Action → Data Update**: A user drags a knob. This event handler calculates the new value and updates the central Data Structure (node.parameters).
 
-Data Update $\to$ Visual/Tone.js Sync: The moment the Data Structure is updated, two critical actions occur:
+**Data Update → Visual/Tone.js Sync**: The moment the Data Structure is updated, two critical actions occur:
+- The visual display and knob rotation are updated (Visual Sync)
+- The `syncToneEngine()` function is called, which updates the actual property on the Tone.js Object (e.g., `vco1ToneObject.frequency.value = newValue`)
 
-The visual display and knob rotation are updated (Visual Sync).
+**Data Update → Code Compiler**: The `generateCode()` function is called, reading the entire Data Structure and outputting the updated code.
 
-The syncToneEngine() function is called, which updates the actual property on the Tone.js Object (vco1ToneObject.frequency.value = newValue).
+2.2 The PatchingController System (`PatchingController.js`)
 
-Data Update $\to$ Code Compiler: The generateCode() function is called, reading the entire Data Structure and outputting the updated code.
+The platform now includes a dedicated PatchingController that manages all visual cable connections:
+
+**Key Features**:
+- **Drag-and-Drop Patching**: Professional modular synth UX (output-to-input dragging)
+- **Signal Type Validation**: Ensures audio, CV, and gate signals connect appropriately  
+- **Visual Feedback**: Ghost cables during drag operations with signal-colored feedback
+- **Connection Management**: Real-time connection creation/removal with audio recompilation
+- **Universal Port System**: Single event listener system for all patch ports
 
 3. Signal Flow and Color Coding
 
@@ -64,80 +62,70 @@ The T.E. Grid uses a color-coding system to visually represent the type of signa
 
 3.1 Audio Path (Yellow Ports)
 
-This is the main sound signal. It flows sequentially from Source $\to$ Shaper $\to$ Time $\to$ Effect $\to$ Destination.
+This is the main sound signal. It flows sequentially from Source → Shaper → Time → Effect → Destination.
 
-Module Type
+| Module Type | Knob Color | Current Modules | Function |
+|-------------|------------|-----------------|----------|
+| **Source** | Orange | VCO-1 | Generates raw sound (Sine, Square, Sawtooth, Triangle) |
+| **Shaper** | Blue | VCF-1 | Alters timbre with filtering (LPF, HPF, BPF, Notch) |
+| **Time/Gain** | Green/Red | ENV/VCA-1 | Controls amplitude over time (ADSR envelope) |
+| **Effect** | Pink/Silver | REVERB-1 | Post-processing spatial effects |
 
-Knob Color
+**Current Default Signal Chain**: VCO-1 → VCF-1 → ENV/VCA-1 → REVERB-1 → Destination
 
-Example Modules
+**Implementation Details**:
+- All audio connections use `.connect()` calls between Tone.js objects
+- Signal validation prevents incompatible audio-to-CV connections
+- Visual feedback shows connection status with color-coded cables
 
-Function
-
-Source
-
-Orange
-
-VCO
-
-Generates raw sound (Sine, Saw, Square).
-
-Shaper
-
-Blue
-
-VCF
-
-Alters the timbre (Filter Cutoff/Resonance).
-
-Time/Gain
-
-Green/Red
-
-ENV/VCA
-
-Controls volume over time (ADSR).
-
-Effect
-
-Pink/Silver
-
-REVERB
-
-Post-processing effects.
-
-Current Signal Chain: VCO-1 $\to$ VCF-1 $\to$ ENV/VCA-1 $\to$ REVERB-1 $\to$ Destination
-
-3.2 Control Voltage (CV) Path (Blue Ports)
+3.2 Control Voltage (CV) Path (Purple/Blue Ports)
 
 This is a control signal used to automate parameters on other modules.
 
-Module Type
+| Module Type | Port Color | Current Module | Function |
+|-------------|------------|----------------|----------|
+| **Modulation** | Purple/Gray | LFO-1 | Generates cyclical control signals (Sine, Square, Sawtooth, Triangle) at sub-audio frequencies |
 
-Port Color
+**Current CV Routing**: LFO-1 → VCF-1 Frequency (for filter sweeping)
 
-Example Connection
-
-Function
-
-Modulation
-
-Purple/Gray
-
-LFO
-
-Generates a cyclical waveform (Sine, Saw) below the audible range ($<20\text{Hz}$).
-
-Current CV Patch: LFO-1 $\to$ VCF-1 Frequency Knob
+**Implementation Details**:
+- CV signals connect to Tone.js parameter objects (e.g., `filter.frequency`)
+- Port validation ensures CV only connects to compatible parameter inputs  
+- LFO module includes min/max range controls for modulation depth
+- Visual port translation: `/cv_in` automatically maps to `/frequency` for audio parameters
 
 4. The Code Compiler
 
-The Code Compiler reads the global synthNodes array and translates it into three structured blocks of runnable Tone.js code:
+The Code Compiler reads the module instances and connection data to generate three structured blocks of runnable Tone.js code:
 
-Instantiation Block: Generates all const declarations (e.g., const vco1 = new Tone.OmniOscillator(...)).
+**4.1 Instantiation Block**: Generates all module declarations using the ModuleFactory system
+```javascript
+// Example output:
+const vco1 = new Tone.Oscillator({ frequency: 440, type: "sine" });
+const filter1 = new Tone.Filter({ frequency: 8000, type: "lowpass", Q: 1 });
+const envelope1 = new Tone.AmplitudeEnvelope({ attack: 0.1, decay: 0.2, sustain: 0.5, release: 1.0 });
+```
 
-Patching Block: Generates all .connect() calls for both audio (vco1.connect(filter1)) and control (lfo1.connect(filter1.frequency)).
+**4.2 Patching Block**: Generates all `.connect()` calls for both audio and control signals
+```javascript
+// Example audio connections:
+vco1.connect(filter1);
+filter1.connect(envelope1);
+envelope1.connect(reverb1);
 
-Triggering Block: Generates the final playSynth function, encapsulating the note-on/note-off logic.
+// Example CV connections:
+lfo1.connect(filter1.frequency);
+```
 
-This ensures that any patch created visually is instantly exported as clean, usable code.
+**4.3 Triggering Block**: Generates the final `playSynth()` function with note-on/note-off logic
+```javascript
+function playSynth() {
+    envelope1.triggerAttackRelease("8n");
+    vco1.start();
+}
+```
+
+**Implementation Details**:
+- Code generation is triggered by the `compilePatching()` function
+- The `currentPatchConnections` array stores all connection data
+- Generated code is clean, production-ready JavaScript with no platform dependencies

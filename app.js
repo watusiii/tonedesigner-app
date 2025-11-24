@@ -102,9 +102,23 @@ async function setupSynth() {
         // DYNAMIC PATCHING LOGIC - Use the new compilation system
         compilePatching();
         
+        // Add window resize handler for cable position tracking
+        window.addEventListener('resize', () => {
+            console.log('🔌 Window resized - redrawing cables...');
+            setTimeout(() => {
+                drawPatchCables();
+                if (window.patchingController) {
+                    window.patchingController.refreshCableListeners();
+                }
+            }, 100); // Small delay to ensure layout has updated
+        });
+        
         // Start the oscillator and LFO immediately
         vco1ToneObject.start();
         lfoToneObject.start();
+        
+        // Initialize menu toggle functionality
+        initializeMenu();
         
         // Initialize global synth nodes array
         synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode];
@@ -1307,13 +1321,25 @@ function createCablePathBetweenPorts(sourcePort, targetPort, type, index, origin
  * @returns {string} - SVG path data
  */
 function generateCablePath(start, end) {
-    const dx = Math.abs(end.x - start.x);
-    const controlOffset = Math.min(dx * 0.6, 150); // More pronounced curve for longer cables
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Dynamic droop based on distance and direction
+    const baseDroop = Math.min(60, Math.max(20, distance * 0.15));
+    const directionFactor = dx >= 0 ? 1 : 0.7; // Less droop for backward connections
+    const droop = baseDroop * directionFactor;
+    
+    // Enhanced control points for more natural curves
+    const cp1x = start.x + dx * 0.4;
+    const cp1y = start.y + droop + (dy * 0.1);
+    const cp2x = end.x - dx * 0.4;
+    const cp2y = end.y + droop + (dy * 0.1);
     
     return `
         M ${start.x} ${start.y}
-        C ${start.x + controlOffset} ${start.y}
-          ${end.x - controlOffset} ${end.y}
+        C ${cp1x} ${cp1y}
+          ${cp2x} ${cp2y}
           ${end.x} ${end.y}
     `.trim();
 }
@@ -2691,6 +2717,30 @@ function exportCode() {
     console.log(code);
     console.log('='.repeat(80));
     return code;
+}
+
+/**
+ * Initialize menu toggle functionality
+ */
+function initializeMenu() {
+    const menuButton = document.getElementById('menu-button');
+    const slideMenu = document.getElementById('slide-menu');
+    
+    if (menuButton && slideMenu) {
+        menuButton.addEventListener('click', () => {
+            slideMenu.classList.toggle('open');
+            console.log('🍔 Menu toggled:', slideMenu.classList.contains('open') ? 'open' : 'closed');
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!menuButton.contains(e.target) && !slideMenu.contains(e.target)) {
+                slideMenu.classList.remove('open');
+            }
+        });
+        
+        console.log('🍔 Menu system initialized');
+    }
 }
 
 // Initialize the platform when the page loads

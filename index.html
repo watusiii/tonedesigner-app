@@ -13,7 +13,22 @@
 <body>
     <header>
         <h1>TONEDESIGNER</h1>
+        <button id="menu-button" class="menu-button">MENU</button>
     </header>
+
+    <div id="slide-menu" class="slide-menu">
+        <div class="menu-content">
+            <div class="menu-item">PATCH MANAGER</div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">SOUND LIBRARY</div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">SETTINGS</div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">EXPORT CODE</div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">ABOUT</div>
+        </div>
+    </div>
 
     <div id="app-container">
     </div>
@@ -31,6 +46,10 @@
             <textarea id="code-display" readonly></textarea>
         </div>
     </div>
+
+    <footer id="app-footer">
+        by watusi
+    </footer>
 
     <script src="modules.js"></script>
     <script src="PatchingController.js"></script>

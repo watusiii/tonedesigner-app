@@ -247,6 +247,8 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    padding-bottom: 20px;
+    /* Push content up for footer */
 }
 
 /* Header Styling - Module-like design */
@@ -260,7 +262,12 @@ header {
     /* 2px bottom border like modules */
     border-radius: 0;
     /* No radius for full width */
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    z-index: 6000;
+    /* Above menu */
 }
 
 header h1 {
@@ -269,6 +276,92 @@ header h1 {
     letter-spacing: var(--letter-spacing-widest);
     color: var(--color-gray-500);
     margin: 0;
+}
+
+/* Menu Button - T.E. Style */
+.menu-button {
+    position: absolute;
+    right: var(--space-4);
+    background-color: var(--color-pure-white);
+    color: var(--color-pure-black);
+    border: var(--border-width-thin) solid var(--color-pure-black);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.menu-button:hover {
+    background-color: var(--color-pure-black);
+    color: var(--color-pure-white);
+}
+
+/* Sliding Menu Panel */
+.slide-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--color-pure-black);
+    color: var(--color-pure-white);
+    z-index: 5000;
+    transform: translateY(-100%);
+    /* Hidden above viewport */
+    transition: transform var(--transition-base);
+    border-bottom: var(--border-width-thick) solid var(--color-pure-white);
+}
+
+.slide-menu.open {
+    transform: translateY(45px);
+    /* Slide down to just under header */
+}
+
+.menu-content {
+    padding: 0;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-base);
+}
+
+.menu-item {
+    color: var(--color-pure-white);
+    font-weight: var(--font-weight-normal);
+    letter-spacing: var(--letter-spacing-wider);
+    font-size: var(--font-size-lg);
+    padding: var(--space-4) var(--space-6);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+    border-bottom: 1px solid var(--color-gray-600);
+}
+
+.menu-item:last-child {
+    border-bottom: none;
+}
+
+.menu-item:hover {
+    color: var(--color-te-orange);
+}
+
+/* Footer Styling - Branding */
+#app-footer {
+    height: 20px;
+    background-color: var(--color-pure-white);
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    padding: 0 var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-top: var(--border-width-thin) solid var(--color-border-medium);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 8000;
+    /* Below keyboard and code panel */
 }
 
 /* Main App Container - Primary Work Surface */
@@ -311,12 +404,14 @@ header h1 {
 
 #code-output-panel {
     position: fixed;
-    bottom: var(--keyboard-height);
+    bottom: calc(var(--keyboard-height) + 20px);
+    /* Above keyboard + footer */
     left: 0;
     right: 0;
     background-color: var(--color-background-surface);
     border-top: var(--border-width-thin) solid var(--color-pure-black);
-    z-index: 999;
+    z-index: 1200;
+    /* Above keyboard and footer */
     transition: transform var(--transition-base);
 }
 
@@ -455,7 +550,8 @@ header h1 {
 /* Sticky Keyboard Container - Bottom fixed area */
 .keyboard-container {
     position: fixed;
-    bottom: 0;
+    bottom: 20px;
+    /* Above footer */
     left: 0;
     right: 0;
     height: var(--keyboard-height);
@@ -466,7 +562,8 @@ header h1 {
     justify-content: center;
     padding: 0;
     /* Full bleed keyboard */
-    z-index: 1000;
+    z-index: 9000;
+    /* Above footer, below code panel */
 }
 
 .test-note-button {
@@ -586,7 +683,6 @@ header h1 {
 
 /* Base Synth Module Styling */
 .synth-module {
-    background-color: var(--color-pure-white);
     border: var(--border-width-thin) solid var(--color-border-medium);
     border-bottom-width: 1px;
     /* 2px bottom border for module separation */
@@ -620,7 +716,7 @@ header h1 {
 /* Module Header */
 .module-header {
     padding: var(--space-4);
-    background-color: var(--color-gray-50);
+    background-color: var(--color-pure-white);
     /* Light gray background for taskbar area */
     border-bottom: var(--border-width-base) solid var(--color-pure-black);
     /* 2px */
@@ -646,6 +742,7 @@ header h1 {
 }
 
 .control-group {
+    background-color: var(--color-pure-white);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -654,6 +751,7 @@ header h1 {
     min-width: 80px;
     flex: 1;
     position: relative;
+
     border-right: var(--border-width-thin) solid var(--color-pure-black);
     padding: var(--space-4);
     /* Standard padding */
@@ -868,6 +966,7 @@ header h1 {
     border-radius: var(--border-radius-base);
 }
 
+
 /* Synth Knob Styling - T.E. Color Scheme */
 .synth-knob {
     width: 48px;
@@ -974,11 +1073,19 @@ header h1 {
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    pointer-events: none; /* Let child port handle mouse events */
+    pointer-events: none;
+    /* Let child port handle mouse events */
 }
 
 .corner-port-input .patch-port {
-    pointer-events: auto; /* Port can receive mouse events */
+    pointer-events: auto;
+    /* Port can receive mouse events */
+}
+
+.corner-port-input .multiplier-selector,
+.corner-port-input .multiplier-option {
+    pointer-events: auto;
+    /* Allow multiplier buttons to be clicked */
 }
 
 .corner-port-output {
@@ -988,13 +1095,16 @@ header h1 {
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    pointer-events: none; /* Let child port handle mouse events */
+    pointer-events: none;
+    /* Let child port handle mouse events */
 }
 
 .corner-port-output .patch-port {
-    pointer-events: auto; /* Port can receive mouse events */
+    pointer-events: auto;
+    /* Port can receive mouse events */
     position: relative;
-    z-index: 1000; /* Force output ports above everything */
+    z-index: 100;
+    /* Above cables but below UI panels */
 }
 
 /* Secondary corner port positioning (like gate input) - Top right corner */
@@ -1015,7 +1125,8 @@ header h1 {
     font-weight: var(--font-weight-medium);
     color: var(--color-text-tertiary);
     letter-spacing: var(--letter-spacing-wide);
-    pointer-events: none; /* Don't block port interactions */
+    pointer-events: none;
+    /* Don't block port interactions */
 }
 
 
@@ -1226,13 +1337,16 @@ header h1 {
     left: 0;
     width: 100%;
     height: 100%;
-    pointer-events: none; /* SVG container should NOT block port interactions */
-    z-index: 5; /* Below modules so ports can be clicked */
+    pointer-events: none;
+    /* SVG container should NOT block port interactions */
+    z-index: 1;
+    /* Below all interactive elements */
 }
 
 /* Permanent Cable Paths */
 .patch-cable {
-    pointer-events: auto; /* Individual cables are clickable for removal */
+    pointer-events: auto;
+    /* Individual cables are clickable for removal */
     stroke-width: 3;
     fill: none;
     cursor: pointer;
@@ -1246,7 +1360,8 @@ header h1 {
 
 /* Ghost Cable During Drag */
 .ghost-cable {
-    pointer-events: none !important; /* Never block drop targets */
+    pointer-events: none !important;
+    /* Never block drop targets */
     stroke-width: 3;
     fill: none;
     stroke-dasharray: 5, 5;
@@ -1255,31 +1370,40 @@ header h1 {
 }
 
 @keyframes ghostCablePulse {
-    from { opacity: 0.5; }
-    to { opacity: 0.9; }
+    from {
+        opacity: 0.5;
+    }
+
+    to {
+        opacity: 0.9;
+    }
 }
 
 /* Cable Colors by Signal Type */
 .patch-cable[data-signal="audio"],
 .ghost-cable[data-signal="audio"] {
-    stroke: var(--color-cable-audio); /* TE Yellow */
+    stroke: var(--color-cable-audio);
+    /* TE Yellow */
 }
 
 .patch-cable[data-signal="cv"],
 .ghost-cable[data-signal="cv"] {
-    stroke: var(--color-te-purple); /* TE Purple for CV */
+    stroke: var(--color-te-purple);
+    /* TE Purple for CV */
 }
 
 .patch-cable[data-signal="gate"],
 .ghost-cable[data-signal="gate"] {
-    stroke: var(--color-cable-cv); /* TE Blue for gate */
+    stroke: var(--color-cable-cv);
+    /* TE Blue for gate */
 }
 
 /* Port Visual Feedback During Drag */
 .patch-port.drag-source {
     transform: scale(1.2);
     box-shadow: 0 0 8px currentColor;
-    z-index: 1000;
+    z-index: 200;
+    /* Above other ports during drag */
 }
 
 .patch-port.valid-target {

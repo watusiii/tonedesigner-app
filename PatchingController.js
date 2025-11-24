@@ -231,14 +231,26 @@ class PatchingController {
     updateGhostCable(startCoords, endCoords) {
         if (!this.ghostCable) return;
         
-        // Create curved cable path (standard modular synth look)
-        const dx = Math.abs(endCoords.x - startCoords.x);
-        const controlOffset = Math.min(dx * 0.5, 100);
+        // Use the same enhanced curve algorithm as permanent cables
+        const dx = endCoords.x - startCoords.x;
+        const dy = endCoords.y - startCoords.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Dynamic droop based on distance and direction
+        const baseDroop = Math.min(60, Math.max(20, distance * 0.15));
+        const directionFactor = dx >= 0 ? 1 : 0.7; // Less droop for backward connections
+        const droop = baseDroop * directionFactor;
+        
+        // Enhanced control points for more natural curves
+        const cp1x = startCoords.x + dx * 0.4;
+        const cp1y = startCoords.y + droop + (dy * 0.1);
+        const cp2x = endCoords.x - dx * 0.4;
+        const cp2y = endCoords.y + droop + (dy * 0.1);
         
         const pathData = `
             M ${startCoords.x} ${startCoords.y}
-            C ${startCoords.x + controlOffset} ${startCoords.y}
-              ${endCoords.x - controlOffset} ${endCoords.y}
+            C ${cp1x} ${cp1y}
+              ${cp2x} ${cp2y}
               ${endCoords.x} ${endCoords.y}
         `.trim();
         
