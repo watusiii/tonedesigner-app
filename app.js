@@ -446,7 +446,7 @@ class P5CanvasManager {
         if (!container) return false;
         
         const module = container.closest('.synth-module');
-        return module && module.dataset.moduleId && module.dataset.moduleId.includes('lfo');
+        return module && module.dataset.moduleId && (module.dataset.moduleId.includes('lfo') || module.dataset.moduleId.includes('reverb'));
     }
     
     /**
@@ -470,46 +470,57 @@ class P5CanvasManager {
         const amplitude = height * 0.35; // Use 70% of height for wave amplitude
         const resolution = 200; // High resolution for smooth curves
         
+        // Check if this is reverb or LFO and render accordingly
+        const container = document.getElementById(config.containerId);
+        const module = container?.closest('.synth-module');
+        const isReverb = module && module.dataset.moduleId && module.dataset.moduleId.includes('reverb');
+        
         // Start drawing the waveform
         p.beginShape();
         for (let i = 0; i <= resolution; i++) {
             const x = p.map(i, 0, resolution, 0, width);
-            
-            // Get actual LFO frequency with multiplier INSIDE the loop like ADSR does
-            let lfoFrequency = 1; // Default fallback
-            let multiplier = 1; // Default multiplier
-            if (lfoNode && lfoNode.parameters) {
-                lfoFrequency = parseFloat(lfoNode.parameters.frequency) || 1;
-                multiplier = parseFloat(lfoNode.parameters.multiplier) || 1;
-            }
-            
-            // Apply multiplier and calculate cycles
-            const effectiveFreq = lfoFrequency * multiplier;
-            const cyclesToShow = effectiveFreq * 2;
-            
-            const t = p.map(i, 0, resolution, 0, p.TWO_PI * cyclesToShow); // Use calculated cycles
             let waveValue = 0;
             
-            switch (waveType) {
-                case 'sine':
-                    waveValue = Math.sin(t);
-                    break;
-                case 'square':
-                    waveValue = Math.sin(t) > 0 ? 1 : -1;
-                    break;
-                case 'sawtooth':
-                    waveValue = 2 * (t % p.TWO_PI) / p.TWO_PI - 1;
-                    break;
-                case 'triangle':
-                    const phase = t % p.TWO_PI;
-                    if (phase < p.PI) {
-                        waveValue = 2 * phase / p.PI - 1;
-                    } else {
-                        waveValue = 3 - 2 * phase / p.PI;
-                    }
-                    break;
-                default:
-                    waveValue = Math.sin(t); // Default to sine
+            if (isReverb) {
+                // Use the same reverb calculation as the pixel matrix system
+                waveValue = this.calculateReverbStatic(i, resolution);
+            } else {
+                // LFO waveform rendering
+                // Get actual LFO frequency with multiplier INSIDE the loop like ADSR does
+                let lfoFrequency = 1; // Default fallback
+                let multiplier = 1; // Default multiplier
+                if (lfoNode && lfoNode.parameters) {
+                    lfoFrequency = parseFloat(lfoNode.parameters.frequency) || 1;
+                    multiplier = parseFloat(lfoNode.parameters.multiplier) || 1;
+                }
+                
+                // Apply multiplier and calculate cycles
+                const effectiveFreq = lfoFrequency * multiplier;
+                const cyclesToShow = effectiveFreq * 2;
+                
+                const t = p.map(i, 0, resolution, 0, p.TWO_PI * cyclesToShow); // Use calculated cycles
+                
+                switch (waveType) {
+                    case 'sine':
+                        waveValue = Math.sin(t);
+                        break;
+                    case 'square':
+                        waveValue = Math.sin(t) > 0 ? 1 : -1;
+                        break;
+                    case 'sawtooth':
+                        waveValue = 2 * (t % p.TWO_PI) / p.TWO_PI - 1;
+                        break;
+                    case 'triangle':
+                        const phase = t % p.TWO_PI;
+                        if (phase < p.PI) {
+                            waveValue = 2 * phase / p.PI - 1;
+                        } else {
+                            waveValue = 3 - 2 * phase / p.PI;
+                        }
+                        break;
+                    default:
+                        waveValue = Math.sin(t); // Default to sine
+                }
             }
             
             const y = centerY - (waveValue * amplitude);
