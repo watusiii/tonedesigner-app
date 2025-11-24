@@ -1,4 +1,4 @@
-T.E. GRID: Modular Synthesizer Platform
+TONEDESIGNER: Modular Synthesizer Platform
 
 1. Project Overview and Philosophy
 

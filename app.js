@@ -99,14 +99,8 @@ async function setupSynth() {
         reverbModuleInstance = ModuleFactory.create('reverb', reverbNode.id, reverbNode.parameters);
         reverbToneObject = reverbModuleInstance.toneObject;
         
-        // CRITICAL PATCHING LOGIC - Signal Chain: VCO -> Filter -> Envelope -> Reverb -> Destination
-        vco1ToneObject.connect(filterToneObject);
-        filterToneObject.connect(envelopeToneObject);
-        envelopeToneObject.connect(reverbToneObject);
-        reverbToneObject.toDestination();
-        
-        // Connect LFO to modulate filter frequency
-        lfoToneObject.connect(filterToneObject.frequency);
+        // DYNAMIC PATCHING LOGIC - Use the new compilation system
+        compilePatching();
         
         // Start the oscillator and LFO immediately
         vco1ToneObject.start();
@@ -915,45 +909,154 @@ let p5Manager;
  */
 
 /**
- * Hardcoded Patch Connections - Mirrors the Tone.js connection logic
- * This array defines all the visual cables that should be drawn
+ * Dynamic Patch Connections - Single source of truth for all active connections
+ * Used by both the audio engine (compilePatching) and visual system (PatchCableManager)
  */
-const patchConnections = [
+const currentPatchConnections = [
     // Audio signal chain: VCO → VCF → ENV → REVERB → Destination
-    {
-        from: 'oscillator-1',
-        fromPort: 'audio-output',
-        to: 'filter-1', 
-        toPort: 'audio-input',
-        type: 'audio',
-        id: 'vco-to-filter'
-    },
-    {
-        from: 'filter-1',
-        fromPort: 'audio-output',
-        to: 'envelope-1',
-        toPort: 'audio-input', 
-        type: 'audio',
-        id: 'filter-to-envelope'
-    },
-    {
-        from: 'envelope-1',
-        fromPort: 'audio-output',
-        to: 'reverb-1',
-        toPort: 'audio-input',
-        type: 'audio', 
-        id: 'envelope-to-reverb'
-    },
+    { source: 'oscillator-1/audio_out', target: 'filter-1/audio_in', type: 'audio' },
+    { source: 'filter-1/audio_out', target: 'envelope-1/audio_in', type: 'audio' },
+    { source: 'envelope-1/audio_out', target: 'reverb-1/audio_in', type: 'audio' },
+    { source: 'reverb-1/audio_out', target: 'destination', type: 'audio' },
     // CV modulation: LFO → VCF Frequency
-    {
-        from: 'lfo-1',
-        fromPort: 'cv-output', 
-        to: 'filter-1',
-        toPort: 'cv-input',
-        type: 'cv',
-        id: 'lfo-to-filter-freq'
-    }
+    { source: 'lfo-1/cv_out', target: 'filter-1/frequency', type: 'cv' }
 ];
+
+// Legacy patchConnections array removed - now using currentPatchConnections with dynamic conversion
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * DYNAMIC PATCHING COMPILER
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Dynamic Patching Compiler - Replaces hardcoded connection logic
+ * Reads currentPatchConnections array and creates/recreates all Tone.js connections
+ */
+function compilePatching() {
+    console.log('🔌 Compiling patch connections...');
+    
+    // STEP 1: Disconnect ALL Tone.js objects to prevent ghost connections
+    disconnectAllModules();
+    
+    // STEP 2: Parse and apply each connection from currentPatchConnections
+    currentPatchConnections.forEach((connection, index) => {
+        try {
+            applyConnection(connection);
+            console.log(`✅ Applied connection ${index + 1}: ${connection.source} → ${connection.target}`);
+        } catch (error) {
+            console.error(`❌ Failed to apply connection: ${connection.source} → ${connection.target}`, error);
+        }
+    });
+    
+    console.log(`🔌 Patch compilation complete: ${currentPatchConnections.length} connections applied`);
+}
+
+/**
+ * Disconnect all Tone.js module objects
+ * Critical first step to ensure clean slate before reconnecting
+ */
+function disconnectAllModules() {
+    console.log('🔌 Disconnecting all modules...');
+    
+    // Disconnect all module instances created by ModuleFactory
+    if (oscillatorModuleInstance?.toneObject) {
+        oscillatorModuleInstance.toneObject.disconnect();
+    }
+    if (filterModuleInstance?.toneObject) {
+        filterModuleInstance.toneObject.disconnect();
+    }
+    if (envelopeModuleInstance?.toneObject) {
+        envelopeModuleInstance.toneObject.disconnect();
+    }
+    if (lfoModuleInstance?.toneObject) {
+        lfoModuleInstance.toneObject.disconnect();
+    }
+    if (reverbModuleInstance?.toneObject) {
+        reverbModuleInstance.toneObject.disconnect();
+    }
+    
+    // Also disconnect legacy global objects for safety
+    if (vco1ToneObject) vco1ToneObject.disconnect();
+    if (filterToneObject) filterToneObject.disconnect();
+    if (envelopeToneObject) envelopeToneObject.disconnect();
+    if (lfoToneObject) lfoToneObject.disconnect();
+    if (reverbToneObject) reverbToneObject.disconnect();
+    
+    console.log('🔌 All modules disconnected');
+}
+
+/**
+ * Apply a single connection from currentPatchConnections format
+ * @param {Object} connection - Connection object with source, target, type
+ */
+function applyConnection(connection) {
+    const { source, target, type } = connection;
+    
+    // Parse source and target
+    const [sourceModuleId, sourcePort] = source.split('/');
+    const [targetModuleId, targetPort] = target.split('/');
+    
+    // Get source Tone.js object
+    const sourceObject = getToneObjectById(sourceModuleId);
+    if (!sourceObject) {
+        throw new Error(`Source module not found: ${sourceModuleId}`);
+    }
+    
+    // Handle different connection types
+    if (type === 'audio') {
+        if (target === 'destination') {
+            // Final connection to destination
+            sourceObject.toDestination();
+        } else {
+            // Standard audio connection
+            const targetObject = getToneObjectById(targetModuleId);
+            if (!targetObject) {
+                throw new Error(`Target module not found: ${targetModuleId}`);
+            }
+            sourceObject.connect(targetObject);
+        }
+    } else if (type === 'cv') {
+        // CV connection to specific parameter
+        const targetObject = getToneObjectById(targetModuleId);
+        if (!targetObject) {
+            throw new Error(`Target module not found: ${targetModuleId}`);
+        }
+        
+        // Connect to specific parameter (e.g., filter.frequency)
+        if (targetPort && targetObject[targetPort]) {
+            sourceObject.connect(targetObject[targetPort]);
+        } else {
+            throw new Error(`Target parameter not found: ${targetModuleId}.${targetPort}`);
+        }
+    } else {
+        throw new Error(`Unknown connection type: ${type}`);
+    }
+}
+
+/**
+ * Get Tone.js object by module ID
+ * @param {string} moduleId - Module identifier (e.g., 'oscillator-1', 'filter-1')
+ * @returns {Object} Tone.js object or null
+ */
+function getToneObjectById(moduleId) {
+    switch (moduleId) {
+        case 'oscillator-1':
+            return vco1ToneObject || oscillatorModuleInstance?.toneObject;
+        case 'filter-1':
+            return filterToneObject || filterModuleInstance?.toneObject;
+        case 'envelope-1':
+            return envelopeToneObject || envelopeModuleInstance?.toneObject;
+        case 'lfo-1':
+            return lfoToneObject || lfoModuleInstance?.toneObject;
+        case 'reverb-1':
+            return reverbToneObject || reverbModuleInstance?.toneObject;
+        default:
+            console.warn(`Unknown module ID: ${moduleId}`);
+            return null;
+    }
+}
 
 /**
  * Patch Cable Manager - Handles SVG cable drawing and coordinate tracking
@@ -1083,11 +1186,65 @@ class PatchCableManager {
     drawAllCables() {
         if (!this.svgElement) return;
         
-        patchConnections.forEach(connection => {
+        // Convert currentPatchConnections to legacy format for visual rendering
+        const legacyConnections = this.convertToLegacyFormat(currentPatchConnections);
+        
+        legacyConnections.forEach(connection => {
             this.drawCable(connection);
         });
         
         console.log('Patch Cable Manager: Drew all patch cables');
+    }
+    
+    /**
+     * Convert currentPatchConnections format to legacy format for visual rendering
+     * @param {Array} connections - Array of currentPatchConnections
+     * @returns {Array} Array of legacy format connections
+     */
+    convertToLegacyFormat(connections) {
+        return connections.map((conn, index) => {
+            // Parse source and target
+            const [fromModule, fromPort] = conn.source.split('/');
+            const [toModule, toPort] = conn.target.split('/');
+            
+            // Handle destination special case
+            if (conn.target === 'destination') {
+                return {
+                    from: fromModule,
+                    fromPort: this.mapPortName(fromPort, 'output'),
+                    to: 'destination',
+                    toPort: 'destination',
+                    type: conn.type,
+                    id: `${fromModule}-to-destination`
+                };
+            }
+            
+            // Standard connection
+            return {
+                from: fromModule,
+                fromPort: this.mapPortName(fromPort, 'output'),
+                to: toModule,
+                toPort: this.mapPortName(toPort, 'input'),
+                type: conn.type,
+                id: `${fromModule}-to-${toModule}-${index}`
+            };
+        });
+    }
+    
+    /**
+     * Map new port names to legacy port names
+     * @param {string} portName - New format port name (e.g., 'audio_out', 'frequency')
+     * @param {string} direction - 'input' or 'output'
+     * @returns {string} Legacy port name
+     */
+    mapPortName(portName, direction) {
+        if (portName === 'audio_out') return 'audio-output';
+        if (portName === 'audio_in') return 'audio-input';
+        if (portName === 'cv_out') return 'cv-output';
+        if (portName === 'frequency') return 'cv-input'; // CV to frequency parameter
+        
+        // Default fallback
+        return direction === 'input' ? 'audio-input' : 'audio-output';
     }
     
     /**
