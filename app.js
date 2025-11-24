@@ -441,16 +441,8 @@ class P5CanvasManager {
      * @param {Object} config - Configuration options
      */
     drawWaveform(p, waveType, width, height, config) {
-        // Check if this is an LFO module based on the container context
-        const isLFOModule = this.isLFOModule(config.containerId);
-        
-        if (isLFOModule) {
-            // NEW STYLE: Smooth line rendering for LFO modules
-            this.drawSmoothWaveform(p, waveType, width, height, config);
-        } else {
-            // ORIGINAL STYLE: Pixel matrix rendering for other modules
-            this.drawPixelMatrixWaveform(p, waveType, width, height, config);
-        }
+        // Use pixel matrix style for ALL modules
+        this.drawPixelMatrixWaveform(p, waveType, width, height, config);
     }
     
     /**
@@ -465,92 +457,84 @@ class P5CanvasManager {
         if (!container) return false;
         
         const module = container.closest('.synth-module');
-        return module && module.dataset.moduleId && (module.dataset.moduleId.includes('lfo') || module.dataset.moduleId.includes('reverb'));
+        return module && module.dataset.moduleId && module.dataset.moduleId.includes('lfo');
     }
     
     /**
-     * NEW: Smooth line rendering with inverted colors for LFO modules
+     * LFO: Pixel line rendering for LFO modules only
      * @param {Object} p - P5.js instance
      * @param {string} waveType - Type of wave to draw
      * @param {number} width - Canvas width
      * @param {number} height - Canvas height
      * @param {Object} config - Configuration options
      */
-    drawSmoothWaveform(p, waveType, width, height, config) {
-        console.log(`drawSmoothWaveform CALLED for waveType: ${waveType}, container: ${config.containerId}`);
+    drawPixelLineWaveform(p, waveType, width, height, config) {
+        console.log(`drawPixelLineWaveform CALLED for waveType: ${waveType}, container: ${config.containerId}`);
         
-        // Inverted color scheme: black background, white line
+        // Inverted color scheme: black background, white pixels
         p.background(0); // Black background
-        p.stroke(255); // White line
-        p.strokeWeight(2); // Thicker line for visibility
-        p.noFill();
+        p.fill(255); // White pixels
+        p.noStroke(); // No stroke for pixel dots
         
         const centerY = height / 2;
         const amplitude = height * 0.35; // Use 70% of height for wave amplitude
-        const resolution = 200; // High resolution for smooth curves
+        const resolution = width * 2; // Higher resolution for smooth line
+        const pixelSize = 4; // Bigger pixel dots (2x size)
+        const pixelSpacing = 1; // Solid line - no gaps between pixels
         
-        // Check if this is reverb or LFO and render accordingly
-        const container = document.getElementById(config.containerId);
-        const module = container?.closest('.synth-module');
-        const isReverb = module && module.dataset.moduleId && module.dataset.moduleId.includes('reverb');
-        
-        // Start drawing the waveform
-        p.beginShape();
-        for (let i = 0; i <= resolution; i++) {
+        // LFO waveform rendering using pixel dots
+        for (let i = 0; i < resolution; i += pixelSpacing) {
             const x = p.map(i, 0, resolution, 0, width);
             let waveValue = 0;
             
-            if (isReverb) {
-                // Use the same reverb calculation as the pixel matrix system
-                waveValue = this.calculateReverbStatic(i, resolution);
-            } else {
-                // LFO waveform rendering
-                // Get actual LFO frequency with multiplier INSIDE the loop like ADSR does
-                let lfoFrequency = 1; // Default fallback
-                let multiplier = 1; // Default multiplier
-                if (lfoNode && lfoNode.parameters) {
-                    lfoFrequency = parseFloat(lfoNode.parameters.frequency) || 1;
-                    multiplier = parseFloat(lfoNode.parameters.multiplier) || 1;
-                }
-                
-                // Apply multiplier and calculate cycles
-                const effectiveFreq = lfoFrequency * multiplier;
-                const cyclesToShow = effectiveFreq * 2;
-                
-                const t = p.map(i, 0, resolution, 0, p.TWO_PI * cyclesToShow); // Use calculated cycles
-                
-                switch (waveType) {
-                    case 'sine':
-                        waveValue = Math.sin(t);
-                        break;
-                    case 'square':
-                        waveValue = Math.sin(t) > 0 ? 1 : -1;
-                        break;
-                    case 'sawtooth':
-                        waveValue = 2 * (t % p.TWO_PI) / p.TWO_PI - 1;
-                        break;
-                    case 'triangle':
-                        const phase = t % p.TWO_PI;
-                        if (phase < p.PI) {
-                            waveValue = 2 * phase / p.PI - 1;
-                        } else {
-                            waveValue = 3 - 2 * phase / p.PI;
-                        }
-                        break;
-                    default:
-                        waveValue = Math.sin(t); // Default to sine
-                }
+            // Get actual LFO frequency with multiplier
+            let lfoFrequency = 1; // Default fallback
+            let multiplier = 1; // Default multiplier
+            if (lfoNode && lfoNode.parameters) {
+                lfoFrequency = parseFloat(lfoNode.parameters.frequency) || 1;
+                multiplier = parseFloat(lfoNode.parameters.multiplier) || 1;
             }
             
+            // Apply multiplier and calculate cycles
+            const effectiveFreq = lfoFrequency * multiplier;
+            const cyclesToShow = effectiveFreq * 2;
+            
+            const t = p.map(i, 0, resolution, 0, p.TWO_PI * cyclesToShow);
+            
+            switch (waveType) {
+                case 'sine':
+                    waveValue = Math.sin(t);
+                    break;
+                case 'square':
+                    waveValue = Math.sin(t) > 0 ? 1 : -1;
+                    break;
+                case 'sawtooth':
+                    waveValue = 2 * (t % p.TWO_PI) / p.TWO_PI - 1;
+                    break;
+                case 'triangle':
+                    const phase = t % p.TWO_PI;
+                    if (phase < p.PI) {
+                        waveValue = 2 * phase / p.PI - 1;
+                    } else {
+                        waveValue = 3 - 2 * phase / p.PI;
+                    }
+                    break;
+                default:
+                    waveValue = Math.sin(t); // Default to sine
+            }
+            
+            // Calculate Y position for this pixel
             const y = centerY - (waveValue * amplitude);
-            p.vertex(x, y);
+            
+            // Draw pixel dot at this position
+            p.rect(x - pixelSize/2, y - pixelSize/2, pixelSize, pixelSize);
         }
-        p.endShape();
         
-        // Optional: Add a subtle center line
-        p.stroke(80); // Dark gray
-        p.strokeWeight(0.5);
-        p.line(0, centerY, width, centerY);
+        // Optional: Add a subtle center line using pixel dots
+        p.fill(80); // Dark gray pixels for center line
+        for (let x = 0; x < width; x += pixelSpacing * 2) {
+            p.rect(x - 0.5, centerY - 0.5, 1, 1);
+        }
         
     }
     
