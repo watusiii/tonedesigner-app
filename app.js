@@ -74,41 +74,30 @@ async function setupSynth() {
             }
         }, { once: true });
         
-        // Create Tone.js oscillator instance using oscillatorNode data
-        vco1ToneObject = new Tone.Oscillator({
-            frequency: oscillatorNode.parameters.frequency,
-            type: oscillatorNode.parameters.waveform,
-            detune: oscillatorNode.parameters.detune
-        });
+        // Create oscillator module instance using new module factory
+        // NOTE: Transition to modular architecture - oscillator now created via ModuleFactory
+        oscillatorModuleInstance = ModuleFactory.create('oscillator', oscillatorNode.id, oscillatorNode.parameters);
+        vco1ToneObject = oscillatorModuleInstance.toneObject;
         
-        // Create Tone.js filter instance using filterNode data
-        filterToneObject = new Tone.Filter({
-            frequency: filterNode.parameters.frequency,
-            type: filterNode.parameters.type,
-            Q: filterNode.parameters.Q
-        });
+        // Create filter module instance using new module factory
+        // NOTE: Transition to modular architecture - filter now created via ModuleFactory
+        filterModuleInstance = ModuleFactory.create('filter', filterNode.id, filterNode.parameters);
+        filterToneObject = filterModuleInstance.toneObject;
         
-        // Create Tone.js envelope instance using envelopeNode data
-        envelopeToneObject = new Tone.AmplitudeEnvelope({
-            attack: envelopeNode.parameters.attack,
-            decay: envelopeNode.parameters.decay,
-            sustain: envelopeNode.parameters.sustain,
-            release: envelopeNode.parameters.release
-        });
+        // Create envelope module instance using new module factory
+        // NOTE: Transition to modular architecture - envelope now created via ModuleFactory
+        envelopeModuleInstance = ModuleFactory.create('envelope', envelopeNode.id, envelopeNode.parameters);
+        envelopeToneObject = envelopeModuleInstance.toneObject;
         
-        // Create Tone.js LFO instance using lfoNode data
-        lfoToneObject = new Tone.LFO({
-            frequency: lfoNode.parameters.frequency,
-            type: lfoNode.parameters.type,
-            min: lfoNode.parameters.min,
-            max: lfoNode.parameters.max
-        });
+        // Create LFO module instance using new module factory
+        // NOTE: Transition to modular architecture - LFO now created via ModuleFactory
+        lfoModuleInstance = ModuleFactory.create('lfo', lfoNode.id, lfoNode.parameters);
+        lfoToneObject = lfoModuleInstance.toneObject;
         
-        // Create Tone.js Reverb instance using reverbNode data
-        reverbToneObject = new Tone.Reverb({
-            decay: reverbNode.parameters.decay,
-            wet: reverbNode.parameters.wet
-        });
+        // Create reverb module instance using new module factory
+        // NOTE: Transition to modular architecture - reverb now created via ModuleFactory
+        reverbModuleInstance = ModuleFactory.create('reverb', reverbNode.id, reverbNode.parameters);
+        reverbToneObject = reverbModuleInstance.toneObject;
         
         // CRITICAL PATCHING LOGIC - Signal Chain: VCO -> Filter -> Envelope -> Reverb -> Destination
         vco1ToneObject.connect(filterToneObject);
@@ -198,6 +187,12 @@ const oscillatorNode = {
 let vco1ToneObject;
 
 /**
+ * Global oscillator module instance (NEW MODULAR SYSTEM)
+ * This stores the complete module created by the ModuleFactory
+ */
+let oscillatorModuleInstance;
+
+/**
  * ═══════════════════════════════════════════════════════════════════════════════
  * FILTER MODULE - SYNTH NODE DATA STRUCTURE & TONE.JS INTEGRATION
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -223,6 +218,12 @@ const filterNode = {
  * This is the actual audio engine object that corresponds to the filterNode
  */
 let filterToneObject;
+
+/**
+ * Global filter module instance (NEW MODULAR SYSTEM)
+ * This stores the complete module created by the ModuleFactory
+ */
+let filterModuleInstance;
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -257,6 +258,12 @@ const envelopeNode = window.envelopeNode;
 let envelopeToneObject;
 
 /**
+ * Global envelope module instance (NEW MODULAR SYSTEM)
+ * This stores the complete module created by the ModuleFactory
+ */
+let envelopeModuleInstance;
+
+/**
  * ═══════════════════════════════════════════════════════════════════════════════
  * LFO MODULE - SYNTH NODE DATA STRUCTURE & TONE.JS INTEGRATION
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -284,6 +291,12 @@ const lfoNode = {
  * This is the actual audio engine object that corresponds to the lfoNode
  */
 let lfoToneObject;
+
+/**
+ * Global LFO module instance (NEW MODULAR SYSTEM)
+ * This stores the complete module created by the ModuleFactory
+ */
+let lfoModuleInstance;
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -314,6 +327,12 @@ const reverbNode = window.reverbNode;
  * This is the actual audio engine object that corresponds to the reverbNode
  */
 let reverbToneObject;
+
+/**
+ * Global reverb module instance (NEW MODULAR SYSTEM)
+ * This stores the complete module created by the ModuleFactory
+ */
+let reverbModuleInstance;
 
 /**
  * Global Synth Nodes Array - For tracking all modules
@@ -1522,11 +1541,16 @@ function syncToneEngine(node) {
 function initializeModules() {
     const appContainer = document.getElementById('app-container');
     if (appContainer) {
-        const oscillatorHTML = renderOscillatorModule(oscillatorNode);
-        const filterHTML = renderFilterModule(filterNode);
-        const envelopeHTML = renderEnvelopeModule(envelopeNode);
-        const lfoHTML = renderLFOModule(lfoNode);
-        const reverbHTML = renderReverbModule(reverbNode);
+        // Use the oscillator module created in setupSynth
+        const oscillatorHTML = oscillatorModuleInstance ? oscillatorModuleInstance.element : renderOscillatorModule(oscillatorNode);
+        // Use the filter module created in setupSynth
+        const filterHTML = filterModuleInstance ? filterModuleInstance.element : renderFilterModule(filterNode);
+        // Use the envelope module created in setupSynth
+        const envelopeHTML = envelopeModuleInstance ? envelopeModuleInstance.element : renderEnvelopeModule(envelopeNode);
+        // Use the LFO module created in setupSynth
+        const lfoHTML = lfoModuleInstance ? lfoModuleInstance.element : renderLFOModule(lfoNode);
+        // Use the reverb module created in setupSynth
+        const reverbHTML = reverbModuleInstance ? reverbModuleInstance.element : renderReverbModule(reverbNode);
         
         // Create a module container with flex layout, SVG overlay, and spacer
         appContainer.innerHTML = `
