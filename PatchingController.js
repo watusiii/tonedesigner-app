@@ -332,8 +332,13 @@ class PatchingController {
      */
     createConnection(sourcePort, targetPort) {
         const sourceId = this.getPortId(sourcePort);
-        const targetId = this.getPortId(targetPort);
+        let targetId = this.getPortId(targetPort);
         const signalType = sourcePort.getAttribute('data-signal');
+        
+        // Translate CV visual ports to actual Tone.js parameters
+        if (signalType === 'cv' && targetId.endsWith('/cv_in')) {
+            targetId = targetId.replace('/cv_in', '/frequency');
+        }
         
         console.log(`🔌 Creating connection: ${sourceId} → ${targetId} (${signalType})`);
         
