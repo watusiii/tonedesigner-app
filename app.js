@@ -143,7 +143,32 @@ async function setupSynth() {
         // Initialize P5 Canvas Manager
         initializeP5Manager();
         
-        // Cable visual system removed - keeping data structure only
+        // Initialize PatchingController AFTER DOM is fully ready
+        setTimeout(() => {
+            const svgElement = document.getElementById('patch-svg');
+            const ports = document.querySelectorAll('.patch-port');
+            
+            console.log(`🔌 Found ${ports.length} ports in DOM`);
+            
+            if (svgElement && ports.length > 0) {
+                window.patchingController = new PatchingController(
+                    currentPatchConnections,
+                    compilePatching,
+                    getPortCoordinates,
+                    svgElement
+                );
+                window.patchingController.initializeListeners();
+                
+                // Draw initial cables to show existing connections
+                drawPatchCables();
+                
+                console.log('🔌 PatchingController initialized successfully');
+            } else {
+                console.error('🔌 Could not find patch-svg element or ports');
+                console.error('SVG element:', svgElement);
+                console.error('Ports found:', ports.length);
+            }
+        }, 100); // Small delay to ensure DOM is ready
         
         console.log('T.E. Grid Synthesis: Synthesizer platform initialized');
         
@@ -920,7 +945,7 @@ const currentPatchConnections = [
     { source: 'filter-1/audio_out', target: 'envelope-1/audio_in', type: 'audio' },
     { source: 'envelope-1/audio_out', target: 'reverb-1/audio_in', type: 'audio' },
     { source: 'reverb-1/audio_out', target: 'destination', type: 'audio' },
-    // CV modulation: LFO → VCF Frequency
+    // CV modulation: LFO → VCF Frequency Parameter
     { source: 'lfo-1/cv_out', target: 'filter-1/frequency', type: 'cv' }
 ];
 
@@ -953,6 +978,9 @@ function compilePatching() {
     });
     
     console.log(`🔌 Patch compilation complete: ${currentPatchConnections.length} connections applied`);
+    
+    // STEP 3: Update visual cable representation
+    drawPatchCables();
 }
 
 /**
@@ -1062,97 +1090,9 @@ function getToneObjectById(moduleId) {
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * INTERACTIVE DRAG-AND-DROP PATCHING SYSTEM
+ * UTILITY FUNCTIONS FOR PATCHING SYSTEM
  * ═══════════════════════════════════════════════════════════════════════════════
- */
-
-/**
- * Initialize the drag-and-drop patching system
- * Call this after modules are rendered and patch cables are drawn
- */
-
-/**
- * Set up event listeners for all patch ports
- */
-function setupPortEventListeners() {
-    const ports = document.querySelectorAll('.patch-port');
-    
-    ports.forEach(port => {
-        port.addEventListener('mousedown', handlePortMouseDown);
-    });
-    
-    console.log(`🖱️ Set up event listeners for ${ports.length} patch ports`);
-}
-
-/**
- * Handle mousedown on a patch port - start dragging
- * @param {MouseEvent} e - Mouse event
- */
-
-/**
- * Set up global mouse handlers for dragging
- */
-function setupGlobalMouseHandlers() {
-    document.addEventListener('mousemove', handleGlobalMouseMove);
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-}
-
-/**
- * Handle global mouse move - update ghost cable
- * @param {MouseEvent} e - Mouse event
- */
-function handleGlobalMouseMove(e) {
-    if (!isDragging || !ghostCable) return;
-    
-    // Get source port coordinates
-    const sourcePort = document.querySelector(`[data-port-type="${dragSourceType}-out"]`);
-    if (!sourcePort) return;
-    
-    const sourceCoords = getPortCoordinates(sourcePort);
-    const mouseCoords = { x: e.clientX, y: e.clientY };
-    
-    // Update ghost cable path
-    updateGhostCable(sourceCoords, mouseCoords);
-}
-
-/**
- * Handle global mouse up - complete or cancel connection
- * @param {MouseEvent} e - Mouse event
- */
-function handleGlobalMouseUp(e) {
-    if (!isDragging) return;
-    
-    console.log('🖱️ Ending drag operation');
-    
-    // Find target element under cursor
-    const targetElement = document.elementFromPoint(e.clientX, e.clientY);
-    const targetPort = targetElement?.closest('.patch-port');
-    
-    if (targetPort) {
-        const targetPortInfo = getPortInfo(targetPort);
-        
-        // Validate connection
-        if (isValidConnection(dragSourcePort, `${targetPortInfo.moduleId}/${targetPortInfo.portName}`, dragSourceType, targetPortInfo)) {
-            createConnection(dragSourcePort, `${targetPortInfo.moduleId}/${targetPortInfo.portName}`, dragSourceType);
-        } else {
-            console.log('🖱️ Invalid connection attempt');
-        }
-    }
-    
-    // Clean up dragging state
-    cleanupDragState();
-}
-
-/**
- * Create ghost cable SVG element
- * @param {Object} start - Start coordinates {x, y}
- * @param {Object} end - End coordinates {x, y}
- */
-
-/**
- * Update ghost cable path
- * @param {Object} start - Start coordinates {x, y}
- * @param {Object} end - End coordinates {x, y}
+ * These functions support both old and new patching systems during transition
  */
 
 /**
@@ -1194,41 +1134,6 @@ function getPortCoordinates(port) {
     };
 }
 
-/**
- * Validate if a connection is allowed
- * @param {string} source - Source port ID
- * @param {string} target - Target port ID  
- * @param {string} sourceType - Source signal type
- * @param {Object} targetInfo - Target port information
- * @returns {boolean} True if connection is valid
- */
-function isValidConnection(source, target, sourceType, targetInfo) {
-    // Can't connect to same module
-    const [sourceModule] = source.split('/');
-    if (sourceModule === targetInfo.moduleId) {
-        console.log('🖱️ Cannot connect module to itself');
-        return false;
-    }
-    
-    // Must connect output to input
-    if (targetInfo.direction !== 'in') {
-        console.log('🖱️ Must connect to input port');
-        return false;
-    }
-    
-    // Signal type must match or be compatible
-    if (sourceType === 'audio' && targetInfo.signalType !== 'audio') {
-        console.log('🖱️ Audio signals must connect to audio inputs');
-        return false;
-    }
-    
-    if (sourceType === 'cv' && targetInfo.signalType !== 'cv') {
-        console.log('🖱️ CV signals must connect to CV inputs');
-        return false;
-    }
-    
-    return true;
-}
 
 /**
  * Create a new connection
@@ -1275,12 +1180,201 @@ function removePatchConnection(source, target) {
 }
 
 /**
- * Clean up dragging state
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * CABLE VISUALIZATION SYSTEM
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
+/**
+ * Draw all patch cables based on currentPatchConnections
+ * This function works with the new PatchingController system
+ */
+function drawPatchCables() {
+    const svg = document.getElementById('patch-svg');
+    if (!svg) {
+        console.warn('🔌 No SVG container found for drawing cables');
+        return;
+    }
+    
+    // Clear existing cables
+    svg.innerHTML = '';
+    
+    // Draw each connection
+    currentPatchConnections.forEach((connection, index) => {
+        try {
+            const cable = createCablePath(connection, index);
+            if (cable) {
+                svg.appendChild(cable);
+            }
+        } catch (error) {
+            console.warn(`🔌 Failed to draw cable ${connection.source} → ${connection.target}:`, error);
+        }
+    });
+    
+    // Refresh click listeners for cable removal
+    if (window.patchingController) {
+        window.patchingController.refreshCableListeners();
+    }
+    
+    console.log(`🔌 Drew ${svg.children.length} of ${currentPatchConnections.length} patch cables`);
+}
 
 /**
- * Patch Cable Manager - Handles SVG cable drawing and coordinate tracking
+ * Create a single cable path SVG element
+ * @param {Object} connection - Connection object {source, target, type}
+ * @param {number} index - Cable index for unique identification
+ * @returns {SVGElement|null} - Cable path element
+ */
+function createCablePath(connection, index) {
+    const { source, target, type } = connection;
+    
+    // Find source and target ports
+    const sourcePort = findPortByID(source);
+    const targetPort = findPortByID(target);
+    
+    if (!sourcePort || !targetPort) {
+        // For CV connections to parameters, draw cable to CV input port instead
+        if (type === 'cv' && target.includes('/frequency')) {
+            const [moduleId] = target.split('/');
+            const cvTargetPort = findPortByID(`${moduleId}/cv_in`);
+            if (cvTargetPort && sourcePort) {
+                console.log(`🔌 Drawing CV cable to cv-in port instead of parameter: ${source} → ${moduleId}/cv_in`);
+                return createCablePathBetweenPorts(sourcePort, cvTargetPort, type, index, `${source} → ${target}`);
+            }
+        }
+        console.warn(`🔌 Could not find ports for connection: ${source} → ${target}`);
+        return null;
+    }
+    
+    // Get coordinates
+    const sourceCoords = getPortCoordinates(sourcePort);
+    const targetCoords = getPortCoordinates(targetPort);
+    
+    // Create cable path element
+    const cable = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    
+    // Generate curved cable path
+    const pathData = generateCablePath(sourceCoords, targetCoords);
+    cable.setAttribute('d', pathData);
+    
+    // Style the cable
+    cable.setAttribute('class', 'patch-cable');
+    cable.setAttribute('data-signal', type);
+    cable.setAttribute('data-cable', `cable-${index}`);
+    cable.setAttribute('data-connection', `${source} → ${target}`);
+    cable.style.pointerEvents = 'auto'; // Enable click for removal
+    
+    // Set color based on signal type - use CSS custom properties to preserve hover effects
+    const color = getCableColor(type);
+    cable.style.stroke = color;
+    cable.style.fill = 'none';
+    cable.style.cursor = 'pointer';
+    
+    // Don't set strokeWidth inline - let CSS handle it for hover effects
+    
+    return cable;
+}
+
+/**
+ * Create cable path between two specific ports
+ */
+function createCablePathBetweenPorts(sourcePort, targetPort, type, index, originalConnection) {
+    const sourceCoords = getPortCoordinates(sourcePort);
+    const targetCoords = getPortCoordinates(targetPort);
+    
+    const cable = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const pathData = generateCablePath(sourceCoords, targetCoords);
+    cable.setAttribute('d', pathData);
+    
+    cable.setAttribute('class', 'patch-cable');
+    cable.setAttribute('data-signal', type);
+    cable.setAttribute('data-cable', `cable-${index}`);
+    cable.setAttribute('data-connection', originalConnection);
+    cable.style.pointerEvents = 'auto';
+    
+    const color = getCableColor(type);
+    cable.style.stroke = color;
+    cable.style.fill = 'none';
+    cable.style.cursor = 'pointer';
+    
+    return cable;
+}
+
+/**
+ * Generate SVG path data for a curved cable
+ * @param {Object} start - Start coordinates {x, y}
+ * @param {Object} end - End coordinates {x, y}
+ * @returns {string} - SVG path data
+ */
+function generateCablePath(start, end) {
+    const dx = Math.abs(end.x - start.x);
+    const controlOffset = Math.min(dx * 0.6, 150); // More pronounced curve for longer cables
+    
+    return `
+        M ${start.x} ${start.y}
+        C ${start.x + controlOffset} ${start.y}
+          ${end.x - controlOffset} ${end.y}
+          ${end.x} ${end.y}
+    `.trim();
+}
+
+/**
+ * Get cable color based on signal type
+ * @param {string} signalType - Signal type (audio, cv, gate)
+ * @returns {string} - CSS color value
+ */
+function getCableColor(signalType) {
+    const colors = {
+        'audio': '#ffcc00',    // TE Yellow
+        'cv': '#8866ff',       // TE Purple
+        'gate': '#0066ff'      // TE Blue
+    };
+    
+    return colors[signalType] || colors.audio;
+}
+
+/**
+ * Find a port element by its ID (module-id/port-type format)
+ * @param {string} portId - Port ID in format "module-id/port-type"
+ * @returns {HTMLElement|null} - Port element
+ */
+function findPortByID(portId) {
+    const [moduleId, portType] = portId.split('/');
+    
+    // Handle special case for destination
+    if (portId === 'destination') {
+        console.log('🔌 Destination connection - no visual cable needed');
+        return null;
+    }
+    
+    // Find the module
+    const module = document.querySelector(`[data-module-id="${moduleId}"]`);
+    if (!module) {
+        console.warn(`🔌 Module not found: ${moduleId}`);
+        return null;
+    }
+    
+    // Convert underscore format to dash format for HTML attributes
+    // audio_out -> audio-out, cv_out -> cv-out, etc.
+    const htmlPortType = portType.replace('_', '-');
+    
+    // Find the port within the module
+    const port = module.querySelector(`[data-port-type="${htmlPortType}"]`);
+    if (!port) {
+        console.warn(`🔌 Port not found in module ${moduleId}: ${htmlPortType}`);
+        // Debug: show available ports
+        const availablePorts = module.querySelectorAll('[data-port-type]');
+        const availableTypes = Array.from(availablePorts).map(p => p.getAttribute('data-port-type'));
+        console.log(`🔌 Available ports in ${moduleId}:`, availableTypes);
+    }
+    
+    return port;
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * P5.JS CANVAS MANAGEMENT SYSTEM
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 
@@ -1703,6 +1797,9 @@ function initializeModules() {
                 ${envelopeHTML}
                 ${lfoHTML}
                 ${reverbHTML}
+                <svg id="patch-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Patch cables will be drawn here by PatchingController -->
+                </svg>
             </div>
             <div class="scroll-spacer"></div>
         `;

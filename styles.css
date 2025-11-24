@@ -298,6 +298,11 @@ header h1 {
     border: var(--border-width-thin) solid;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    cursor: pointer;
+}
+
+.patch-port:hover {
+    transform: scale(1.1);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -969,6 +974,11 @@ header h1 {
     display: flex;
     align-items: center;
     gap: var(--space-1);
+    pointer-events: none; /* Let child port handle mouse events */
+}
+
+.corner-port-input .patch-port {
+    pointer-events: auto; /* Port can receive mouse events */
 }
 
 .corner-port-output {
@@ -978,6 +988,13 @@ header h1 {
     display: flex;
     align-items: center;
     gap: var(--space-1);
+    pointer-events: none; /* Let child port handle mouse events */
+}
+
+.corner-port-output .patch-port {
+    pointer-events: auto; /* Port can receive mouse events */
+    position: relative;
+    z-index: 1000; /* Force output ports above everything */
 }
 
 /* Secondary corner port positioning (like gate input) - Top right corner */
@@ -998,6 +1015,7 @@ header h1 {
     font-weight: var(--font-weight-medium);
     color: var(--color-text-tertiary);
     letter-spacing: var(--letter-spacing-wide);
+    pointer-events: none; /* Don't block port interactions */
 }
 
 
@@ -1195,4 +1213,81 @@ header h1 {
     .synth-module[data-module-id="envelope-1"] .control-group {
         min-width: 50px;
     }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PATCHING SYSTEM - CABLE VISUALIZATION
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Patch SVG Container */
+#patch-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* SVG container should NOT block port interactions */
+    z-index: 5; /* Below modules so ports can be clicked */
+}
+
+/* Permanent Cable Paths */
+.patch-cable {
+    pointer-events: auto; /* Individual cables are clickable for removal */
+    stroke-width: 3;
+    fill: none;
+    cursor: pointer;
+    transition: stroke-width 0.1s ease;
+}
+
+.patch-cable:hover {
+    stroke-width: 4;
+    filter: brightness(1.2);
+}
+
+/* Ghost Cable During Drag */
+.ghost-cable {
+    pointer-events: none !important; /* Never block drop targets */
+    stroke-width: 3;
+    fill: none;
+    stroke-dasharray: 5, 5;
+    opacity: 0.7;
+    animation: ghostCablePulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes ghostCablePulse {
+    from { opacity: 0.5; }
+    to { opacity: 0.9; }
+}
+
+/* Cable Colors by Signal Type */
+.patch-cable[data-signal="audio"],
+.ghost-cable[data-signal="audio"] {
+    stroke: var(--color-cable-audio); /* TE Yellow */
+}
+
+.patch-cable[data-signal="cv"],
+.ghost-cable[data-signal="cv"] {
+    stroke: var(--color-te-purple); /* TE Purple for CV */
+}
+
+.patch-cable[data-signal="gate"],
+.ghost-cable[data-signal="gate"] {
+    stroke: var(--color-cable-cv); /* TE Blue for gate */
+}
+
+/* Port Visual Feedback During Drag */
+.patch-port.drag-source {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px currentColor;
+    z-index: 1000;
+}
+
+.patch-port.valid-target {
+    transform: scale(1.1);
+    box-shadow: 0 0 6px var(--color-te-green);
+}
+
+.patch-port.invalid-target {
+    transform: scale(0.9);
+    opacity: 0.5;
 }
