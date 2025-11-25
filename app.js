@@ -100,7 +100,7 @@ async function setupSynth() {
         reverbToneObject = reverbModuleInstance.toneObject;
         
         // Create mixer module instance using new module factory
-        // NOTE: Transition to modular architecture - mixer now created via ModuleFactory
+        // NOTE: Multi-input mixer with proper architecture
         mixerModuleInstance = ModuleFactory.create('mixer', mixerNode.id, mixerNode.parameters);
         mixerToneObject = mixerModuleInstance.toneObject;
         
@@ -137,7 +137,7 @@ async function setupSynth() {
         syncToneEngine(envelopeNode);
         syncToneEngine(lfoNode);
         syncToneEngine(reverbNode);
-        syncToneEngine(mixerNode);
+        syncToneEngine(mixerNode); // Re-enabled with proper multi-input architecture
         
         // Initialize modules UI - render both modules side by side
         initializeModules();
@@ -1006,7 +1006,7 @@ const currentPatchConnections = [
     { source: 'oscillator-1/audio_out', target: 'filter-1/audio_in', type: 'audio' },
     { source: 'filter-1/audio_out', target: 'envelope-1/audio_in', type: 'audio' },
     { source: 'envelope-1/audio_out', target: 'reverb-1/audio_in', type: 'audio' },
-    { source: 'reverb-1/audio_out', target: 'mixer-1/audio-in/1', type: 'audio' },
+    { source: 'reverb-1/audio_out', target: 'mixer-1/input/1', type: 'audio' },
     { source: 'mixer-1/audio_out', target: 'destination', type: 'audio' },
     // CV modulation: LFO → VCF Frequency Parameter
     { source: 'lfo-1/cv_out', target: 'filter-1/frequency', type: 'cv' }
@@ -1096,7 +1096,24 @@ function applyConnection(connection) {
     
     // Parse source and target
     const [sourceModuleId, sourcePort] = source.split('/');
-    const [targetModuleId, targetPort] = target.split('/');
+    
+    // Special handling for mixer input format: mixer-1/input/1
+    let targetModuleId, targetPort;
+    if (target.includes('/input/')) {
+        const parts = target.split('/');
+        targetModuleId = parts[0];
+        targetPort = parts[1] + '/' + parts[2]; // Reconstruct "input/1"
+    } else {
+        [targetModuleId, targetPort] = target.split('/');
+    }
+    
+    console.log(`🔌 CONNECTION PARSING: ${source} → ${target}`, {
+        targetModuleId: targetModuleId,
+        targetPort: targetPort,
+        isMixer: targetModuleId === 'mixer-1',
+        startsWithAudioIn: targetPort?.startsWith('audio-in/'),
+        fullTarget: target
+    });
     
     // Get source Tone.js object
     const sourceObject = getToneObjectById(sourceModuleId);
@@ -1106,25 +1123,39 @@ function applyConnection(connection) {
     
     // Handle different connection types
     if (type === 'audio') {
-        if (target === 'destination') {
+        if (target === 'destination' || targetModuleId === 'destination') {
             // Final connection to destination
+            console.log(`🔌 DESTINATION DEBUG: Connecting ${sourceModuleId} to destination`, {
+                sourceObject: sourceObject,
+                target: target,
+                targetModuleId: targetModuleId
+            });
             sourceObject.toDestination();
-        } else if (targetModuleId === 'mixer-1' && targetPort.startsWith('audio-in/')) {
-            // Special handling for mixer channel inputs
-            const channelNumber = parseInt(targetPort.replace('audio-in/', '')) - 1; // Convert to 0-based index
+            console.log(`✅ Successfully connected ${sourceModuleId} to destination`);
+        } else if (targetModuleId === 'mixer-1' && targetPort.startsWith('input/')) {
+            console.log(`🔌 MIXER ROUTING DEBUG: targetPort="${targetPort}", condition met`);
+            // Special handling for mixer input connections
+            const inputNumber = parseInt(targetPort.replace('input/', '')) - 1; // Convert to 0-based index
             const mixerObject = getToneObjectById(targetModuleId);
             
-            if (!mixerObject || !mixerObject.channelGains) {
+            if (!mixerObject || !mixerObject.inputGains) {
                 throw new Error(`Mixer not found or not properly initialized: ${targetModuleId}`);
             }
             
-            if (channelNumber < 0 || channelNumber >= mixerObject.channelGains.length) {
-                throw new Error(`Invalid mixer channel: ${channelNumber + 1}`);
+            if (inputNumber < 0 || inputNumber >= mixerObject.inputGains.length) {
+                throw new Error(`Invalid mixer input: ${inputNumber + 1}`);
             }
             
-            // Connect source to the specific channel gain node
-            sourceObject.connect(mixerObject.channelGains[channelNumber]);
-            console.log(`🔌 Connected ${sourceModuleId} to mixer channel ${channelNumber + 1}`);
+            // Connect source to the specific input gain node
+            console.log(`🔌 MIXER CONNECTION DEBUG:`, {
+                sourceModule: sourceModuleId,
+                inputNumber: inputNumber,
+                inputGainNode: mixerObject.inputGains[inputNumber],
+                sourceObject: sourceObject,
+                inputGainValue: mixerObject.inputGains[inputNumber]?.gain?.value
+            });
+            sourceObject.connect(mixerObject.inputGains[inputNumber]);
+            console.log(`🔌 Connected ${sourceModuleId} to mixer input ${inputNumber + 1}`);
         } else {
             // Standard audio connection
             const targetObject = getToneObjectById(targetModuleId);
@@ -1894,15 +1925,27 @@ function syncToneEngine(node) {
         }
         
         // Update Tone.js Mixer parameters from node data
-        if (mixerObject.channelGains) {
-            // Update individual channel gains
+        console.log('🔊 MIXER DEBUG: syncToneEngine called for mixer', {
+            mixerObject: mixerObject,
+            hasInputGains: !!mixerObject.inputGains,
+            inputGainsLength: mixerObject.inputGains?.length,
+            parameters: node.parameters
+        });
+        
+        if (mixerObject.inputGains) {
+            // Update individual input gains
             for (let i = 1; i <= 8; i++) {
                 const paramName = `channel${i}Gain`;
-                if (node.parameters[paramName] !== undefined && mixerObject.channelGains[i-1]) {
-                    mixerObject.channelGains[i-1].gain.value = node.parameters[paramName];
-                    console.log(`🔊 Updated mixer channel ${i} gain: ${node.parameters[paramName]}`);
+                if (node.parameters[paramName] !== undefined && mixerObject.inputGains[i-1]) {
+                    const oldValue = mixerObject.inputGains[i-1].gain.value;
+                    mixerObject.inputGains[i-1].gain.value = node.parameters[paramName];
+                    console.log(`🔊 Updated mixer input ${i} gain: ${oldValue} → ${node.parameters[paramName]} (${mixerObject.inputGains[i-1].gain.value})`);
+                } else {
+                    console.log(`🔊 SKIPPED input ${i}: param=${node.parameters[paramName]}, gainNode=${!!mixerObject.inputGains[i-1]}`);
                 }
             }
+        } else {
+            console.error('🔊 MIXER ERROR: No inputGains found on mixer object!');
         }
         
         // Update master gain
@@ -2094,8 +2137,8 @@ function setupKnobInteraction() {
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             } else if (param.startsWith('channel') && param.endsWith('Gain')) {
-                // Mixer channel gain: 0.0 to 1.0 linear scaling
-                const sensitivity = 0.01;
+                // Mixer channel gain: 0.0 to 1.0 linear scaling (increased sensitivity)
+                const sensitivity = 0.03;
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             } else if (param === 'masterGain') {
@@ -2125,6 +2168,14 @@ function setupKnobInteraction() {
             }
             
             if (targetNode) {
+                console.log(`🎛️ KNOB DEBUG: ${param} changed`, {
+                    moduleId: moduleId,
+                    param: param,
+                    oldValue: targetNode.parameters[param],
+                    newValue: newValue,
+                    targetNode: targetNode
+                });
+                
                 // Update data structure
                 targetNode.parameters[param] = newValue;
                 
@@ -2135,6 +2186,7 @@ function setupKnobInteraction() {
                 updateKnobVisuals(knob, param, newValue);
                 
                 // Sync with Tone.js
+                console.log(`🎛️ KNOB DEBUG: Calling syncToneEngine for ${moduleId}/${param}`);
                 syncToneEngine(targetNode);
                 
                 // Update ADSR visual if this is an envelope parameter
@@ -2238,8 +2290,8 @@ function setupKnobInteraction() {
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             } else if (param.startsWith('channel') && param.endsWith('Gain')) {
-                // Mixer channel gain: 0.0 to 1.0 linear scaling
-                const sensitivity = 0.01;
+                // Mixer channel gain: 0.0 to 1.0 linear scaling (increased sensitivity)
+                const sensitivity = 0.03;
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             } else if (param === 'masterGain') {
@@ -2269,6 +2321,14 @@ function setupKnobInteraction() {
             }
             
             if (targetNode) {
+                console.log(`🎛️ KNOB DEBUG: ${param} changed`, {
+                    moduleId: moduleId,
+                    param: param,
+                    oldValue: targetNode.parameters[param],
+                    newValue: newValue,
+                    targetNode: targetNode
+                });
+                
                 // Update data structure
                 targetNode.parameters[param] = newValue;
                 
@@ -2279,6 +2339,7 @@ function setupKnobInteraction() {
                 updateKnobVisuals(knob, param, newValue);
                 
                 // Sync with Tone.js
+                console.log(`🎛️ KNOB DEBUG: Calling syncToneEngine for ${moduleId}/${param}`);
                 syncToneEngine(targetNode);
                 
                 // Update ADSR visual if this is an envelope parameter

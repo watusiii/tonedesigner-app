@@ -534,23 +534,23 @@ const MixerModule = {
     },
     
     toneFactory: (params) => {
-        const mixer = new Tone.Channel({
+        const master = new Tone.Channel({
             volume: Tone.gainToDb(params.masterGain),
             pan: 0
         });
         
-        // Create 8 individual channel gain nodes
-        const channelGains = [];
+        // Create 8 individual input gain nodes
+        const inputGains = [];
         for (let i = 1; i <= 8; i++) {
-            const channelGain = new Tone.Gain(params[`channel${i}Gain`]);
-            channelGain.connect(mixer);
-            channelGains.push(channelGain);
+            const inputGain = new Tone.Gain(params[`channel${i}Gain`]);
+            inputGain.connect(master);
+            inputGains.push(inputGain);
         }
         
-        // Attach channel gains to mixer for easy access
-        mixer.channelGains = channelGains;
+        // Attach input gains to master for easy access
+        master.inputGains = inputGains;
         
-        return mixer;
+        return master;
     },
     
     renderFunction: (mixerData) => {
@@ -559,7 +559,7 @@ const MixerModule = {
         for (let i = 1; i <= 8; i++) {
             channelStrips += `
                 <div class="control-group">
-                    <div class="patch-port audio-input" data-port-type="audio-in" data-signal="audio" data-channel="${i}"></div>
+                    <div class="patch-port audio-input" data-port-type="input" data-signal="audio" data-input-id="${i}"></div>
                     <label class="control-label">CH${i}</label>
                     <div class="synth-knob mixer-knob" data-param="channel${i}Gain" data-value="${mixerData.parameters[`channel${i}Gain`]}">
                         <div class="knob-indicator"></div>
