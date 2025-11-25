@@ -302,7 +302,8 @@ header h1 {
 /* Sliding Menu Panel */
 .slide-menu {
     position: fixed;
-    top: 0; /* Will be set dynamically by JS */
+    top: 0;
+    /* Will be set dynamically by JS */
     left: 0;
     right: 0;
     background-color: var(--color-pure-black);
@@ -366,7 +367,8 @@ header h1 {
     padding: var(--space-3) var(--space-4);
     cursor: pointer;
     transition: all var(--transition-fast);
-    width: 97px; /* 1.618 golden ratio */
+    width: 97px;
+    /* 1.618 golden ratio */
     height: 60px;
     border-radius: 0;
 }
@@ -378,58 +380,55 @@ header h1 {
 
 /* Mixer Module Styling */
 .mixer-module {
-    min-width: 400px; /* Wider to accommodate 8 channels */
+    min-width: 400px;
+    /* Wider to accommodate 8 channels */
 }
 
 .mixer-module .mixer-controls {
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
     gap: 0;
     padding: 0;
 }
 
-/* 4x2 grid for channel strips - TOP SECTION */
-.mixer-channels-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 0;
-}
-
-.mixer-channels-grid .control-group {
-    position: relative;
+/* Channel strips - first 8 items in grid */
+.mixer-module .control-group:nth-child(1),
+.mixer-module .control-group:nth-child(2),
+.mixer-module .control-group:nth-child(3),
+.mixer-module .control-group:nth-child(4) {
     border-right: var(--border-width-thin) solid var(--color-pure-black);
     border-bottom: var(--border-width-thin) solid var(--color-pure-black);
-    aspect-ratio: 1; /* Square cells */
 }
 
-/* Remove borders from edge cells */
-.mixer-channels-grid .control-group:nth-child(4),
-.mixer-channels-grid .control-group:nth-child(8) {
-    border-right: none; /* Remove right border from last column */
-}
-
-.mixer-channels-grid .control-group:nth-child(5),
-.mixer-channels-grid .control-group:nth-child(6),
-.mixer-channels-grid .control-group:nth-child(7),
-.mixer-channels-grid .control-group:nth-child(8) {
-    border-bottom: none; /* Remove bottom border from last row */
-}
-
-/* BOTTOM SECTION - visual and master side by side */
-.mixer-bottom-section {
-    display: flex;
-    flex-direction: row;
-    gap: 0;
-    border-top: var(--border-width-base) solid var(--color-pure-black);
-}
-
-.mixer-visual-container {
-    flex: 1;
+.mixer-module .control-group:nth-child(5),
+.mixer-module .control-group:nth-child(6),
+.mixer-module .control-group:nth-child(7),
+.mixer-module .control-group:nth-child(8) {
     border-right: var(--border-width-thin) solid var(--color-pure-black);
-    padding: 0;
+    border-bottom: var(--border-width-thin) solid var(--color-pure-black);
+}
+
+/* Remove right borders from last column */
+.mixer-module .control-group:nth-child(4),
+.mixer-module .control-group:nth-child(8) {
+    border-right: none;
+}
+
+/* Remove bottom borders from second row */
+.mixer-module .control-group:nth-child(5),
+.mixer-module .control-group:nth-child(6),
+.mixer-module .control-group:nth-child(7),
+.mixer-module .control-group:nth-child(8) {
+    border-bottom: none;
+}
+
+/* Visual container - 9th item, spans 3 columns */
+.mixer-module .mixer-visual-container {
+    grid-column: 1 / 4;
+    border-right: var(--border-width-thin) solid var(--color-pure-black);
+    border-top: 1px solid;
     background-color: var(--color-pure-white);
-    aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -443,17 +442,17 @@ header h1 {
     margin: 0;
 }
 
-/* Master knob section */
-.mixer-bottom-section .control-group {
-    aspect-ratio: 1; /* Square like other control groups */
+/* Master knob - 10th item, last column */
+.mixer-module .control-group:nth-child(10) {
+    border-top: 1px solid;
 }
 
 /* Mixer channel input ports positioned in corners */
-.mixer-channels-grid .control-group {
+.mixer-module .control-group {
     position: relative;
 }
 
-.mixer-channels-grid .patch-port {
+.mixer-module .control-group:nth-child(-n+8) .patch-port {
     position: absolute;
     top: var(--corner-port-distance);
     left: var(--corner-port-distance);

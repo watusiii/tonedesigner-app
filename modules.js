@@ -581,22 +581,16 @@ const MixerModule = {
                 </div>
                 
                 <div class="module-controls mixer-controls">
-                    <div class="mixer-channels-grid">
-                        ${channelStrips}
+                    ${channelStrips}
+                    <div class="mixer-visual-container">
+                        <div class="wave-visual" data-wave-type="mixer"></div>
                     </div>
-                    
-                    <div class="mixer-bottom-section">
-                        <div class="mixer-visual-container">
-                            <div class="wave-visual" data-wave-type="mixer"></div>
+                    <div class="control-group">
+                        <label class="control-label">MASTER</label>
+                        <div class="synth-knob mixer-knob" data-param="masterGain" data-value="${mixerData.parameters.masterGain}">
+                            <div class="knob-indicator"></div>
                         </div>
-                        
-                        <div class="control-group">
-                            <label class="control-label">MASTER</label>
-                            <div class="synth-knob mixer-knob" data-param="masterGain" data-value="${mixerData.parameters.masterGain}">
-                                <div class="knob-indicator"></div>
-                            </div>
-                            <span class="control-value">${Math.round(mixerData.parameters.masterGain * 100)}%</span>
-                        </div>
+                        <span class="control-value">${Math.round(mixerData.parameters.masterGain * 100)}%</span>
                     </div>
                 </div>
             </div>
