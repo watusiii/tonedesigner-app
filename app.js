@@ -99,6 +99,11 @@ async function setupSynth() {
         reverbModuleInstance = ModuleFactory.create('reverb', reverbNode.id, reverbNode.parameters);
         reverbToneObject = reverbModuleInstance.toneObject;
         
+        // Create mixer module instance using new module factory
+        // NOTE: Transition to modular architecture - mixer now created via ModuleFactory
+        mixerModuleInstance = ModuleFactory.create('mixer', mixerNode.id, mixerNode.parameters);
+        mixerToneObject = mixerModuleInstance.toneObject;
+        
         // DYNAMIC PATCHING LOGIC - Use the new compilation system
         compilePatching();
         
@@ -124,7 +129,7 @@ async function setupSynth() {
         initializeAddModuleButton();
         
         // Initialize global synth nodes array
-        synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode];
+        synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode, mixerNode];
         
         // Initial sync to ensure Tone.js objects match data structures
         syncToneEngine(oscillatorNode);
@@ -132,15 +137,16 @@ async function setupSynth() {
         syncToneEngine(envelopeNode);
         syncToneEngine(lfoNode);
         syncToneEngine(reverbNode);
+        syncToneEngine(mixerNode);
         
         // Initialize modules UI - render both modules side by side
         initializeModules();
         
-        // Setup interactive knob functionality
-        setupKnobInteraction();
-        
-        // Setup selector functionality
-        setupSelectorInteraction();
+        // Setup interactive knob functionality (call after DOM is ready)
+        setTimeout(() => {
+            setupKnobInteraction();
+            setupSelectorInteraction();
+        }, 0);
         
         // Setup multiplier functionality
         setupMultiplierInteraction();
@@ -368,6 +374,45 @@ let reverbToneObject;
  * This stores the complete module created by the ModuleFactory
  */
 let reverbModuleInstance;
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * MIXER MODULE - DATA STRUCTURE AND TONE.JS OBJECT
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Mixer Node - Data Structure for 8-Channel Mixer
+ * This object stores the module's state and serves as the source of truth for
+ * the visual module, Tone.js object creation and the Code Compiler
+ */
+const mixerNode = {
+    id: "mixer-1",
+    type: "Mixer",
+    parameters: {
+        channel1Gain: 0.7,
+        channel2Gain: 0.7,
+        channel3Gain: 0.7,
+        channel4Gain: 0.7,
+        channel5Gain: 0.7,
+        channel6Gain: 0.7,
+        channel7Gain: 0.7,
+        channel8Gain: 0.7,
+        masterGain: 0.8
+    }
+};
+
+/**
+ * Global Tone.js Mixer instance
+ * This is the actual audio engine object that corresponds to the mixerNode
+ */
+let mixerToneObject;
+
+/**
+ * Global mixer module instance (NEW MODULAR SYSTEM)
+ * This stores the complete module created by the ModuleFactory
+ */
+let mixerModuleInstance;
 
 /**
  * Global Synth Nodes Array - For tracking all modules
@@ -957,11 +1002,12 @@ let p5Manager;
  * Used by both the audio engine (compilePatching) and visual system (PatchCableManager)
  */
 const currentPatchConnections = [
-    // Audio signal chain: VCO → VCF → ENV → REVERB → Destination
+    // Audio signal chain: VCO → VCF → ENV → REVERB → MIXER → Destination
     { source: 'oscillator-1/audio_out', target: 'filter-1/audio_in', type: 'audio' },
     { source: 'filter-1/audio_out', target: 'envelope-1/audio_in', type: 'audio' },
     { source: 'envelope-1/audio_out', target: 'reverb-1/audio_in', type: 'audio' },
-    { source: 'reverb-1/audio_out', target: 'destination', type: 'audio' },
+    { source: 'reverb-1/audio_out', target: 'mixer-1/audio-in/1', type: 'audio' },
+    { source: 'mixer-1/audio_out', target: 'destination', type: 'audio' },
     // CV modulation: LFO → VCF Frequency Parameter
     { source: 'lfo-1/cv_out', target: 'filter-1/frequency', type: 'cv' }
 ];
@@ -1023,6 +1069,13 @@ function disconnectAllModules() {
     if (reverbModuleInstance?.toneObject) {
         reverbModuleInstance.toneObject.disconnect();
     }
+    if (mixerModuleInstance?.toneObject) {
+        mixerModuleInstance.toneObject.disconnect();
+        // Also disconnect all channel gain nodes
+        if (mixerModuleInstance.toneObject.channelGains) {
+            mixerModuleInstance.toneObject.channelGains.forEach(gain => gain.disconnect());
+        }
+    }
     
     // Also disconnect legacy global objects for safety
     if (vco1ToneObject) vco1ToneObject.disconnect();
@@ -1056,6 +1109,22 @@ function applyConnection(connection) {
         if (target === 'destination') {
             // Final connection to destination
             sourceObject.toDestination();
+        } else if (targetModuleId === 'mixer-1' && targetPort.startsWith('audio-in/')) {
+            // Special handling for mixer channel inputs
+            const channelNumber = parseInt(targetPort.replace('audio-in/', '')) - 1; // Convert to 0-based index
+            const mixerObject = getToneObjectById(targetModuleId);
+            
+            if (!mixerObject || !mixerObject.channelGains) {
+                throw new Error(`Mixer not found or not properly initialized: ${targetModuleId}`);
+            }
+            
+            if (channelNumber < 0 || channelNumber >= mixerObject.channelGains.length) {
+                throw new Error(`Invalid mixer channel: ${channelNumber + 1}`);
+            }
+            
+            // Connect source to the specific channel gain node
+            sourceObject.connect(mixerObject.channelGains[channelNumber]);
+            console.log(`🔌 Connected ${sourceModuleId} to mixer channel ${channelNumber + 1}`);
         } else {
             // Standard audio connection
             const targetObject = getToneObjectById(targetModuleId);
@@ -1099,6 +1168,8 @@ function getToneObjectById(moduleId) {
             return lfoToneObject || lfoModuleInstance?.toneObject;
         case 'reverb-1':
             return reverbToneObject || reverbModuleInstance?.toneObject;
+        case 'mixer-1':
+            return mixerToneObject || mixerModuleInstance?.toneObject;
         default:
             console.warn(`Unknown module ID: ${moduleId}`);
             return null;
@@ -1797,6 +1868,24 @@ function syncToneEngine(node) {
         reverbToneObject.wet.value = node.parameters.wet;
         
         console.log(`T.E. Grid Synthesis: Synced ${node.id} - decay: ${node.parameters.decay}s, wet: ${node.parameters.wet}`);
+    } else if (node.id === "mixer-1" && mixerToneObject) {
+        // Update Tone.js Mixer parameters from node data
+        if (mixerToneObject.channelGains) {
+            // Update individual channel gains
+            for (let i = 1; i <= 8; i++) {
+                const paramName = `channel${i}Gain`;
+                if (node.parameters[paramName] !== undefined && mixerToneObject.channelGains[i-1]) {
+                    mixerToneObject.channelGains[i-1].gain.value = node.parameters[paramName];
+                }
+            }
+        }
+        
+        // Update master gain
+        if (node.parameters.masterGain !== undefined) {
+            mixerToneObject.volume.value = Tone.gainToDb(node.parameters.masterGain);
+        }
+        
+        console.log(`T.E. Grid Synthesis: Synced ${node.id} - updated channel gains and master level`);
     }
 }
 
@@ -1817,6 +1906,8 @@ function initializeModules() {
         const lfoHTML = lfoModuleInstance ? lfoModuleInstance.element : renderLFOModule(lfoNode);
         // Use the reverb module created in setupSynth
         const reverbHTML = reverbModuleInstance ? reverbModuleInstance.element : renderReverbModule(reverbNode);
+        // Use the mixer module created in setupSynth
+        const mixerHTML = mixerModuleInstance ? mixerModuleInstance.element : renderMixerModule(mixerNode);
         
         // Create a module container with flex layout, SVG overlay, and spacer
         appContainer.innerHTML = `
@@ -1826,6 +1917,7 @@ function initializeModules() {
                 ${envelopeHTML}
                 ${lfoHTML}
                 ${reverbHTML}
+                ${mixerHTML}
                 <svg id="patch-svg" xmlns="http://www.w3.org/2000/svg">
                     <!-- Patch cables will be drawn here by PatchingController -->
                 </svg>
@@ -1976,6 +2068,16 @@ function setupKnobInteraction() {
                 const sensitivity = 0.01;
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param.startsWith('channel') && param.endsWith('Gain')) {
+                // Mixer channel gain: 0.0 to 1.0 linear scaling
+                const sensitivity = 0.01;
+                newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param === 'masterGain') {
+                // Mixer master gain: 0.0 to 1.0 linear scaling
+                const sensitivity = 0.01;
+                newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             }
             
             // Determine which node to update based on module
@@ -1993,6 +2095,8 @@ function setupKnobInteraction() {
                 targetNode = lfoNode;
             } else if (moduleId === 'reverb-1') {
                 targetNode = reverbNode;
+            } else if (moduleId === 'mixer-1') {
+                targetNode = mixerNode;
             }
             
             if (targetNode) {
@@ -2108,6 +2212,16 @@ function setupKnobInteraction() {
                 const sensitivity = 0.01;
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param.startsWith('channel') && param.endsWith('Gain')) {
+                // Mixer channel gain: 0.0 to 1.0 linear scaling
+                const sensitivity = 0.01;
+                newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param === 'masterGain') {
+                // Mixer master gain: 0.0 to 1.0 linear scaling
+                const sensitivity = 0.01;
+                newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             }
             
             // Determine which node to update based on module
@@ -2125,6 +2239,8 @@ function setupKnobInteraction() {
                 targetNode = lfoNode;
             } else if (moduleId === 'reverb-1') {
                 targetNode = reverbNode;
+            } else if (moduleId === 'mixer-1') {
+                targetNode = mixerNode;
             }
             
             if (targetNode) {
@@ -2263,6 +2379,16 @@ function updateKnobVisuals(knob, param, value) {
             const normalized = value; // Already 0 to 1
             rotation = -135 + (normalized * 270); // -135° to +135°
             displayText = `${value}`;
+        } else if (param.startsWith('channel') && param.endsWith('Gain')) {
+            // Map mixer channel gain (0 to 1) to rotation (-135° to +135°) linear scaling
+            const normalized = value; // Already 0 to 1
+            rotation = -135 + (normalized * 270); // -135° to +135°
+            displayText = `${Math.round(value * 100)}%`;
+        } else if (param === 'masterGain') {
+            // Map mixer master gain (0 to 1) to rotation (-135° to +135°) linear scaling
+            const normalized = value; // Already 0 to 1
+            rotation = -135 + (normalized * 270); // -135° to +135°
+            displayText = `${Math.round(value * 100)}%`;
         }
         
         // Apply rotation to indicator

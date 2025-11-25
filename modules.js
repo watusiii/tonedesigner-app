@@ -508,6 +508,106 @@ const ReverbModule = {
 ModuleFactory.register('reverb', ReverbModule);
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * MIXER MODULE DEFINITION
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Mixer Module - 8-Channel Audio Mixer
+ * Sums multiple audio inputs with individual level controls
+ */
+const MixerModule = {
+    nodeConfig: {
+        type: "Mixer",
+        parameters: {
+            channel1Gain: 0.7,
+            channel2Gain: 0.7,
+            channel3Gain: 0.7,
+            channel4Gain: 0.7,
+            channel5Gain: 0.7,
+            channel6Gain: 0.7,
+            channel7Gain: 0.7,
+            channel8Gain: 0.7,
+            masterGain: 0.8
+        }
+    },
+    
+    toneFactory: (params) => {
+        const mixer = new Tone.Channel({
+            volume: Tone.gainToDb(params.masterGain),
+            pan: 0
+        });
+        
+        // Create 8 individual channel gain nodes
+        const channelGains = [];
+        for (let i = 1; i <= 8; i++) {
+            const channelGain = new Tone.Gain(params[`channel${i}Gain`]);
+            channelGain.connect(mixer);
+            channelGains.push(channelGain);
+        }
+        
+        // Attach channel gains to mixer for easy access
+        mixer.channelGains = channelGains;
+        
+        return mixer;
+    },
+    
+    renderFunction: (mixerData) => {
+        // Generate 8 channel strips in 4x2 grid
+        let channelStrips = '';
+        for (let i = 1; i <= 8; i++) {
+            channelStrips += `
+                <div class="control-group">
+                    <div class="patch-port audio-input" data-port-type="audio-in" data-signal="audio" data-channel="${i}"></div>
+                    <label class="control-label">CH${i}</label>
+                    <div class="synth-knob mixer-knob" data-param="channel${i}Gain" data-value="${mixerData.parameters[`channel${i}Gain`]}">
+                        <div class="knob-indicator"></div>
+                    </div>
+                    <span class="control-value">${Math.round(mixerData.parameters[`channel${i}Gain`] * 100)}%</span>
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="synth-module mixer-module" data-module-id="${mixerData.id}">
+                <div class="corner-port-output">
+                    <div class="patch-port audio-output" data-port-type="audio-out" data-signal="audio"></div>
+                    <span class="corner-port-label">MIX</span>
+                </div>
+                
+                <div class="module-header">
+                    <h3 class="module-title">MIXER-1</h3>
+                </div>
+                
+                <div class="module-controls mixer-controls">
+                    <div class="mixer-channels-grid">
+                        ${channelStrips}
+                    </div>
+                    
+                    <div class="mixer-bottom-section">
+                        <div class="mixer-visual-container">
+                            <div class="wave-visual" data-wave-type="mixer"></div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label class="control-label">MASTER</label>
+                            <div class="synth-knob mixer-knob" data-param="masterGain" data-value="${mixerData.parameters.masterGain}">
+                                <div class="knob-indicator"></div>
+                            </div>
+                            <span class="control-value">${Math.round(mixerData.parameters.masterGain * 100)}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+};
+
+// Register the mixer module
+ModuleFactory.register('mixer', MixerModule);
+
+/**
  * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
  * GLOBAL EXPORTS FOR BACKWARD COMPATIBILITY
  * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP

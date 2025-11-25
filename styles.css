@@ -376,6 +376,105 @@ header h1 {
     color: var(--color-pure-white);
 }
 
+/* Mixer Module Styling */
+.mixer-module {
+    min-width: 400px; /* Wider to accommodate 8 channels */
+}
+
+.mixer-module .mixer-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0;
+    padding: 0;
+}
+
+/* 4x2 grid for channel strips - TOP SECTION */
+.mixer-channels-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 0;
+}
+
+.mixer-channels-grid .control-group {
+    position: relative;
+    border-right: var(--border-width-thin) solid var(--color-pure-black);
+    border-bottom: var(--border-width-thin) solid var(--color-pure-black);
+    aspect-ratio: 1; /* Square cells */
+}
+
+/* Remove borders from edge cells */
+.mixer-channels-grid .control-group:nth-child(4),
+.mixer-channels-grid .control-group:nth-child(8) {
+    border-right: none; /* Remove right border from last column */
+}
+
+.mixer-channels-grid .control-group:nth-child(5),
+.mixer-channels-grid .control-group:nth-child(6),
+.mixer-channels-grid .control-group:nth-child(7),
+.mixer-channels-grid .control-group:nth-child(8) {
+    border-bottom: none; /* Remove bottom border from last row */
+}
+
+/* BOTTOM SECTION - visual and master side by side */
+.mixer-bottom-section {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    border-top: var(--border-width-base) solid var(--color-pure-black);
+}
+
+.mixer-visual-container {
+    flex: 1;
+    border-right: var(--border-width-thin) solid var(--color-pure-black);
+    padding: 0;
+    background-color: var(--color-pure-white);
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mixer-visual-container .wave-visual {
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-pure-white);
+    border: none;
+    margin: 0;
+}
+
+/* Master knob section */
+.mixer-bottom-section .control-group {
+    aspect-ratio: 1; /* Square like other control groups */
+}
+
+/* Mixer channel input ports positioned in corners */
+.mixer-channels-grid .control-group {
+    position: relative;
+}
+
+.mixer-channels-grid .patch-port {
+    position: absolute;
+    top: var(--corner-port-distance);
+    left: var(--corner-port-distance);
+    z-index: 100;
+}
+
+/* Mixer Knob Styling - Green for mixer channels */
+.synth-knob.mixer-knob {
+    background-color: var(--color-te-green);
+    border-color: var(--color-pure-black);
+}
+
+.synth-knob.mixer-knob:hover {
+    background-color: var(--color-te-green-dark);
+    border-color: var(--color-te-green);
+}
+
+.synth-knob.mixer-knob .knob-indicator {
+    background-color: var(--color-te-green-dark);
+}
+
 /* Footer Styling - Branding */
 #app-footer {
     height: 20px;
@@ -421,14 +520,13 @@ header h1 {
     height: var(--patch-port-size);
     border-radius: var(--border-radius-full);
     border: var(--border-width-thin) solid;
-    transition: all 0.2s ease;
     flex-shrink: 0;
     cursor: pointer;
 }
 
-.patch-port:hover {
+/* .patch-port:hover {
     transform: scale(1.1);
-}
+} */
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    CODE OUTPUT PANEL - DARK CONTRAST DESIGN
@@ -1199,7 +1297,6 @@ header h1 {
 .patch-port.audio-output:hover {
     background-color: var(--color-te-yellow-dark);
     border-color: var(--color-te-yellow);
-    transform: scale(1.1);
 }
 
 /* Audio Input Port - T.E. Yellow (same as output for audio signals) */
@@ -1211,7 +1308,6 @@ header h1 {
 .patch-port.audio-input:hover {
     background-color: var(--color-te-yellow-dark);
     border-color: var(--color-te-yellow);
-    transform: scale(1.1);
 }
 
 /* Control Input Port - T.E. Blue */
@@ -1223,7 +1319,6 @@ header h1 {
 .patch-port.control-input:hover {
     background-color: var(--color-te-blue-dark);
     border-color: var(--color-te-blue);
-    transform: scale(1.1);
 }
 
 /* Gate Input Port - T.E. Blue (same size as other ports) */
@@ -1239,7 +1334,6 @@ header h1 {
 .patch-port.gate-input:hover {
     background-color: var(--color-te-blue-dark);
     border-color: var(--color-te-blue);
-    transform: scale(1.1);
 }
 
 /* Control Voltage (CV) Output Port - Purple for modulation signals */
@@ -1251,7 +1345,6 @@ header h1 {
 .patch-port.cv-output:hover {
     background-color: var(--color-te-purple-dark);
     border-color: var(--color-te-purple);
-    transform: scale(1.1);
 }
 
 /* Multiplier Selector - Radial toggle buttons */
