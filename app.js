@@ -1439,13 +1439,30 @@ function getCableColor(signalType) {
  * @returns {HTMLElement|null} - Port element
  */
 function findPortByID(portId) {
-    const [moduleId, portType] = portId.split('/');
-    
     // Handle special case for destination
     if (portId === 'destination') {
         console.log('🔌 Destination connection - no visual cable needed');
         return null;
     }
+    
+    // Handle mixer channel format: mixer-1/audio-in/1
+    if (portId.includes('audio-in/')) {
+        const [moduleId, , channel] = portId.split('/');
+        const module = document.querySelector(`[data-module-id="${moduleId}"]`);
+        if (!module) {
+            console.warn(`🔌 Module not found: ${moduleId}`);
+            return null;
+        }
+        
+        // Find mixer channel port by data-channel attribute
+        const port = module.querySelector(`[data-port-type="audio-in"][data-channel="${channel}"]`);
+        if (!port) {
+            console.warn(`🔌 Mixer channel port not found: ${moduleId} channel ${channel}`);
+        }
+        return port;
+    }
+    
+    const [moduleId, portType] = portId.split('/');
     
     // Find the module
     const module = document.querySelector(`[data-module-id="${moduleId}"]`);
@@ -1883,6 +1900,7 @@ function syncToneEngine(node) {
                 const paramName = `channel${i}Gain`;
                 if (node.parameters[paramName] !== undefined && mixerObject.channelGains[i-1]) {
                     mixerObject.channelGains[i-1].gain.value = node.parameters[paramName];
+                    console.log(`🔊 Updated mixer channel ${i} gain: ${node.parameters[paramName]}`);
                 }
             }
         }
