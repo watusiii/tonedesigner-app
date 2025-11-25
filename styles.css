@@ -271,9 +271,9 @@ header {
 }
 
 header h1 {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: var(--letter-spacing-widest);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-normal);
+    letter-spacing: var(--letter-spacing-wider);
     color: var(--color-gray-500);
     margin: 0;
 }
@@ -302,7 +302,7 @@ header h1 {
 /* Sliding Menu Panel */
 .slide-menu {
     position: fixed;
-    top: 0;
+    top: 0; /* Will be set dynamically by JS */
     left: 0;
     right: 0;
     background-color: var(--color-pure-black);
@@ -315,8 +315,8 @@ header h1 {
 }
 
 .slide-menu.open {
-    transform: translateY(45px);
-    /* Slide down to just under header */
+    transform: translateY(0);
+    /* Slide down to visible */
 }
 
 .menu-content {
@@ -342,6 +342,38 @@ header h1 {
 
 .menu-item:hover {
     color: var(--color-te-orange);
+}
+
+.watusi-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.watusi-link:hover {
+    text-decoration: underline;
+}
+
+/* Add Module Button */
+.add-module-button {
+    display: block;
+    margin: var(--space-4) auto;
+    background-color: var(--color-pure-white);
+    color: var(--color-pure-black);
+    border: var(--border-width-thin) solid var(--color-pure-black);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-normal);
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    width: 97px; /* 1.618 golden ratio */
+    height: 60px;
+    border-radius: 0;
+}
+
+.add-module-button:hover {
+    background-color: var(--color-pure-black);
+    color: var(--color-pure-white);
 }
 
 /* Footer Styling - Branding */
@@ -518,33 +550,56 @@ header h1 {
     overflow-x: auto;
 }
 
+/* Minimal scrollbar for code display */
+#code-display::-webkit-scrollbar {
+    width: 2px;
+}
+
+#code-display::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#code-display::-webkit-scrollbar-thumb {
+    background: var(--color-gray-300);
+    border-radius: 1px;
+}
+
+#code-display::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gray-400);
+}
+
+/* Firefox */
+#code-display {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gray-300) transparent;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    MINIMALIST SCROLLBAR STYLING - T.E. AESTHETIC
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* Webkit Scrollbar Styling */
+/* Minimal Scrollbar Styling for Main Site */
 #app-container::-webkit-scrollbar {
-    width: 8px;
+    width: 2px;
 }
 
 #app-container::-webkit-scrollbar-track {
-    background: var(--color-gray-200);
+    background: transparent;
 }
 
 #app-container::-webkit-scrollbar-thumb {
-    background: var(--color-gray-500);
-    border-radius: var(--border-radius-full);
-    border: 2px solid var(--color-gray-200);
+    background: var(--color-gray-300);
+    border-radius: 1px;
 }
 
 #app-container::-webkit-scrollbar-thumb:hover {
-    background: var(--color-gray-600);
+    background: var(--color-gray-400);
 }
 
 /* Firefox Scrollbar Styling */
 #app-container {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-gray-500) var(--color-gray-200);
+    scrollbar-color: var(--color-gray-300) transparent;
 }
 
 /* Sticky Keyboard Container - Bottom fixed area */

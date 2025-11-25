@@ -120,6 +120,9 @@ async function setupSynth() {
         // Initialize menu toggle functionality
         initializeMenu();
         
+        // Initialize add module button
+        initializeAddModuleButton();
+        
         // Initialize global synth nodes array
         synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode];
         
@@ -1827,6 +1830,7 @@ function initializeModules() {
                     <!-- Patch cables will be drawn here by PatchingController -->
                 </svg>
             </div>
+            <button id="add-module-button" class="add-module-button">+</button>
             <div class="scroll-spacer"></div>
         `;
         
@@ -2725,8 +2729,19 @@ function exportCode() {
 function initializeMenu() {
     const menuButton = document.getElementById('menu-button');
     const slideMenu = document.getElementById('slide-menu');
+    const header = document.querySelector('header');
     
-    if (menuButton && slideMenu) {
+    if (menuButton && slideMenu && header) {
+        // Set menu position dynamically based on actual header height
+        const updateMenuPosition = () => {
+            const headerHeight = header.getBoundingClientRect().height;
+            slideMenu.style.top = `${headerHeight}px`;
+        };
+        
+        // Update position on load and resize
+        updateMenuPosition();
+        window.addEventListener('resize', updateMenuPosition);
+        
         menuButton.addEventListener('click', () => {
             slideMenu.classList.toggle('open');
             console.log('🍔 Menu toggled:', slideMenu.classList.contains('open') ? 'open' : 'closed');
@@ -2740,6 +2755,22 @@ function initializeMenu() {
         });
         
         console.log('🍔 Menu system initialized');
+    }
+}
+
+/**
+ * Initialize add module button functionality
+ */
+function initializeAddModuleButton() {
+    const addButton = document.getElementById('add-module-button');
+    
+    if (addButton) {
+        addButton.addEventListener('click', () => {
+            console.log('➕ Add module button clicked - ready for module selection');
+            // TODO: Implement module selection functionality
+        });
+        
+        console.log('➕ Add module button initialized');
     }
 }
 
