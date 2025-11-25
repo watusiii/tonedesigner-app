@@ -284,7 +284,9 @@ class PatchingController {
         console.log(`🔌 Validating: ${sourceType}(${sourceSignal}) → ${targetType}(${targetSignal})`);
         
         // Rule 1: Source must be output, target must be input
-        if (!sourceType?.includes('-out') || !targetType?.includes('-in')) {
+        const isSourceOutput = sourceType?.includes('-out');
+        const isTargetInput = targetType?.includes('-in') || targetType === 'input';
+        if (!isSourceOutput || !isTargetInput) {
             console.log('🔌 FAIL Rule 1: source must be output, target must be input');
             return false;
         }
@@ -421,16 +423,16 @@ class PatchingController {
         const module = port.closest('[data-module-id]');
         const moduleId = module?.getAttribute('data-module-id');
         const portType = port.getAttribute('data-port-type');
-        const channel = port.getAttribute('data-channel');
+        const inputId = port.getAttribute('data-input-id');
+        
+        // Handle mixer inputs with specific input IDs
+        if (moduleId === 'mixer-1' && inputId && portType === 'input') {
+            return `${moduleId}/input/${inputId}`;
+        }
         
         // Convert dash format to underscore format to match connection data
         // audio-out -> audio_out, cv-in -> cv_in, etc.
         const standardPortType = portType.replace('-', '_');
-        
-        // Handle mixer channels with specific channel numbers
-        if (moduleId === 'mixer-1' && channel && portType === 'audio-in') {
-            return `${moduleId}/audio-in/${channel}`;
-        }
         
         return `${moduleId}/${standardPortType}`;
     }

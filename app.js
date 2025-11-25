@@ -1476,19 +1476,19 @@ function findPortByID(portId) {
         return null;
     }
     
-    // Handle mixer channel format: mixer-1/audio-in/1
-    if (portId.includes('audio-in/')) {
-        const [moduleId, , channel] = portId.split('/');
+    // Handle mixer input format: mixer-1/input/1
+    if (portId.includes('/input/')) {
+        const [moduleId, , inputId] = portId.split('/');
         const module = document.querySelector(`[data-module-id="${moduleId}"]`);
         if (!module) {
             console.warn(`🔌 Module not found: ${moduleId}`);
             return null;
         }
         
-        // Find mixer channel port by data-channel attribute
-        const port = module.querySelector(`[data-port-type="audio-in"][data-channel="${channel}"]`);
+        // Find mixer input port by data-input-id attribute
+        const port = module.querySelector(`[data-port-type="input"][data-input-id="${inputId}"]`);
         if (!port) {
-            console.warn(`🔌 Mixer channel port not found: ${moduleId} channel ${channel}`);
+            console.warn(`🔌 Mixer input port not found: ${moduleId} input ${inputId}`);
         }
         return port;
     }
