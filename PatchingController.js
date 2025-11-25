@@ -421,10 +421,16 @@ class PatchingController {
         const module = port.closest('[data-module-id]');
         const moduleId = module?.getAttribute('data-module-id');
         const portType = port.getAttribute('data-port-type');
+        const channel = port.getAttribute('data-channel');
         
         // Convert dash format to underscore format to match connection data
         // audio-out -> audio_out, cv-in -> cv_in, etc.
         const standardPortType = portType.replace('-', '_');
+        
+        // Handle mixer channels with specific channel numbers
+        if (moduleId === 'mixer-1' && channel && portType === 'audio-in') {
+            return `${moduleId}/audio-in/${channel}`;
+        }
         
         return `${moduleId}/${standardPortType}`;
     }

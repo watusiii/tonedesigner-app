@@ -1868,21 +1868,28 @@ function syncToneEngine(node) {
         reverbToneObject.wet.value = node.parameters.wet;
         
         console.log(`T.E. Grid Synthesis: Synced ${node.id} - decay: ${node.parameters.decay}s, wet: ${node.parameters.wet}`);
-    } else if (node.id === "mixer-1" && mixerToneObject) {
+    } else if (node.id === "mixer-1") {
+        const mixerObject = getToneObjectById("mixer-1");
+        
+        if (!mixerObject) {
+            console.error(`T.E. Grid Synthesis: Mixer object not found for ${node.id}`);
+            return;
+        }
+        
         // Update Tone.js Mixer parameters from node data
-        if (mixerToneObject.channelGains) {
+        if (mixerObject.channelGains) {
             // Update individual channel gains
             for (let i = 1; i <= 8; i++) {
                 const paramName = `channel${i}Gain`;
-                if (node.parameters[paramName] !== undefined && mixerToneObject.channelGains[i-1]) {
-                    mixerToneObject.channelGains[i-1].gain.value = node.parameters[paramName];
+                if (node.parameters[paramName] !== undefined && mixerObject.channelGains[i-1]) {
+                    mixerObject.channelGains[i-1].gain.value = node.parameters[paramName];
                 }
             }
         }
         
         // Update master gain
         if (node.parameters.masterGain !== undefined) {
-            mixerToneObject.volume.value = Tone.gainToDb(node.parameters.masterGain);
+            mixerObject.volume.value = Tone.gainToDb(node.parameters.masterGain);
         }
         
         console.log(`T.E. Grid Synthesis: Synced ${node.id} - updated channel gains and master level`);
