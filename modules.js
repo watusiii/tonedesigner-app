@@ -534,32 +534,58 @@ const EQ8Module = {
     },
     
     toneFactory: (params) => {
-        // For now, create a simple pass-through with master gain to ensure audio flows
+        console.log('🎛️ EQ8 toneFactory called with params:', params);
+        
+        // Calculate EQ band values from our 8 visual bands
+        // Map 8 bands to 3 EQ3 bands: Low (bands 1-3), Mid (bands 4-5), High (bands 6-8)
+        const lowGains = [params.band1Gain || 0, params.band2Gain || 0, params.band3Gain || 0];
+        const midGains = [params.band4Gain || 0, params.band5Gain || 0];
+        const highGains = [params.band6Gain || 0, params.band7Gain || 0, params.band8Gain || 0];
+        
+        // Average the band gains for each EQ3 section
+        const lowGain = lowGains.reduce((a, b) => a + b, 0) / lowGains.length;
+        const midGain = midGains.reduce((a, b) => a + b, 0) / midGains.length;
+        const highGain = highGains.reduce((a, b) => a + b, 0) / highGains.length;
+        
+        // Create Tone.EQ3 - this is the proper way to do EQ!
+        const eq3 = new Tone.EQ3({
+            low: lowGain,    // dB gain for low frequencies
+            mid: midGain,    // dB gain for mid frequencies  
+            high: highGain   // dB gain for high frequencies
+        });
+        
+        // Create master gain stage
         const masterGain = new Tone.Gain(params.masterGain || 1.0);
+        eq3.connect(masterGain);
         
         // Create spectrum analyzer for visualization
         const analyzer = new Tone.FFT(128);
         masterGain.connect(analyzer);
         
-        // Store frequencies for UI reference
+        // Store band mapping for sync updates
         const frequencies = [60, 170, 350, 1000, 2800, 7000, 10000, 15000];
-        
-        // Create placeholder EQ bands (just gain nodes for now)
         const eqBands = [];
         for (let i = 0; i < 8; i++) {
             const bandGain = params[`band${i+1}Gain`] || 0;
-            const gainNode = new Tone.Gain(Tone.dbToGain(bandGain));
-            gainNode.frequency = frequencies[i];
-            gainNode.gainDb = bandGain;
-            eqBands.push(gainNode);
+            eqBands.push({
+                frequency: frequencies[i],
+                gainDb: bandGain,
+                // Map to which EQ3 band this visual band affects
+                eqSection: i < 3 ? 'low' : i < 5 ? 'mid' : 'high'
+            });
         }
         
         // Attach components to master for easy access
-        masterGain.eqBands = eqBands;
+        masterGain.eq3 = eq3;
+        masterGain.eqBands = eqBands; // For UI sync
         masterGain.analyzer = analyzer;
-        masterGain.inputNode = masterGain; // Direct input to master for now
+        masterGain.inputNode = eq3; // Input connects to EQ3
         
-        console.log('🎛️ EQ8 created as pass-through with master gain');
+        console.log('🎛️ EQ8 created with Tone.EQ3:', {
+            low: lowGain + 'dB',
+            mid: midGain + 'dB', 
+            high: highGain + 'dB'
+        });
         
         return masterGain;
     },

@@ -1175,10 +1175,8 @@ function disconnectAllModules() {
     }
     if (eq8ModuleInstance?.toneObject) {
         eq8ModuleInstance.toneObject.disconnect();
-        // Also disconnect all EQ band nodes
-        if (eq8ModuleInstance.toneObject.eqBands) {
-            eq8ModuleInstance.toneObject.eqBands.forEach(band => band.disconnect());
-        }
+        // EQ bands are now simple objects, not Tone.js nodes, so no need to disconnect them
+        console.log('🎛️ EQ8 disconnected');
     }
     if (mixerModuleInstance?.toneObject) {
         mixerModuleInstance.toneObject.disconnect();
@@ -1268,13 +1266,14 @@ function applyConnection(connection) {
             sourceObject.connect(mixerObject.inputGains[inputNumber]);
             console.log(`🔌 Connected ${sourceModuleId} to mixer input ${inputNumber + 1}`);
         } else if (targetModuleId === 'eq8-1') {
-            // Special handling for EQ8 - connect directly to master gain for now
+            // EQ8 connection - connect to the EQ3 input node
             const targetObject = getToneObjectById(targetModuleId);
             if (!targetObject) {
                 throw new Error(`Target module not found: ${targetModuleId}`);
             }
-            sourceObject.connect(targetObject);
-            console.log(`🔌 Connected ${sourceModuleId} to EQ8 master gain`);
+            const inputNode = targetObject.inputNode || targetObject; // inputNode should be eq3
+            sourceObject.connect(inputNode);
+            console.log(`🔌 Connected ${sourceModuleId} to EQ8 (Tone.EQ3 input)`);
         } else {
             // Standard audio connection
             const targetObject = getToneObjectById(targetModuleId);
@@ -2052,25 +2051,41 @@ function syncToneEngine(node) {
             eq8Object: eq8Object
         });
 
-        // Update master gain
+        // Update master gain (masterGain parameter is already linear 0-1, not dB)
         if (node.parameters.masterGain !== undefined) {
-            eq8Object.gain.value = Tone.gainToDb(node.parameters.masterGain);
+            eq8Object.gain.value = node.parameters.masterGain;
+            console.log(`  EQ8 Master Gain: ${node.parameters.masterGain} (linear)`);
         }
 
-        // Update individual EQ band gains
-        for (let i = 1; i <= 8; i++) {
-            const bandParam = `band${i}Gain`;
-            if (node.parameters[bandParam] !== undefined && eq8Object.eqBands && eq8Object.eqBands[i-1]) {
-                const gainDb = node.parameters[bandParam];
-                const eqBand = eq8Object.eqBands[i-1];
-                
-                // Update the gain node (convert dB to linear gain)
-                if (eqBand.gain) {
-                    eqBand.gain.value = Tone.dbToGain(gainDb);
-                    eqBand.gainDb = gainDb; // Store for reference
-                    console.log(`  EQ Band ${i} (${eqBand.frequency}Hz): ${gainDb}dB`);
-                }
-            }
+        // Update EQ3 bands based on our 8 visual bands
+        // Recalculate the averaged values for low/mid/high
+        const lowGains = [
+            node.parameters.band1Gain || 0,
+            node.parameters.band2Gain || 0, 
+            node.parameters.band3Gain || 0
+        ];
+        const midGains = [
+            node.parameters.band4Gain || 0,
+            node.parameters.band5Gain || 0
+        ];
+        const highGains = [
+            node.parameters.band6Gain || 0,
+            node.parameters.band7Gain || 0,
+            node.parameters.band8Gain || 0
+        ];
+        
+        // Calculate averages
+        const lowGain = lowGains.reduce((a, b) => a + b, 0) / lowGains.length;
+        const midGain = midGains.reduce((a, b) => a + b, 0) / midGains.length;
+        const highGain = highGains.reduce((a, b) => a + b, 0) / highGains.length;
+        
+        // Update the Tone.EQ3 object
+        if (eq8Object.eq3) {
+            eq8Object.eq3.low.value = lowGain;
+            eq8Object.eq3.mid.value = midGain; 
+            eq8Object.eq3.high.value = highGain;
+            
+            console.log(`  EQ3 Updated - Low: ${lowGain.toFixed(1)}dB, Mid: ${midGain.toFixed(1)}dB, High: ${highGain.toFixed(1)}dB`);
         }
 
         console.log(`  Synced ${node.id} - masterGain: ${node.parameters.masterGain}`);
