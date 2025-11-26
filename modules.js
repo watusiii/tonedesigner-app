@@ -625,7 +625,7 @@ const EQ8Module = {
                 <div class="module-controls eq8-controls">
                     ${bandControls}
                     <div class="eq8-visual-container">
-                        <div class="wave-visual eq8-spectrum" id="eq8-visual-${eqData.id}">SPECTRUM</div>
+                        <div class="wave-visual eq8-spectrum" id="eq8-visual-${eqData.id}" data-wave-type="eq8">EQ RESPONSE</div>
                     </div>
                     <div class="control-group">
                         <label class="control-label">MASTER</label>

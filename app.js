@@ -695,6 +695,10 @@ class P5CanvasManager {
                     // 8-band frequency analyzer visualization
                     waveValue = this.calculateMixerFrequencyBand(col, gridSize);
                     break;
+                case 'eq8':
+                    // EQ8 frequency response curve visualization
+                    waveValue = this.calculateEQ8FrequencyResponse(col, gridSize);
+                    break;
                 case 'lowpass':
                 case 'highpass':
                 case 'bandpass':
@@ -876,6 +880,48 @@ class P5CanvasManager {
      * @param {number} gridSize - Size of the pixel grid
      * @returns {number} - Wave value (-1 to 1)
      */
+    calculateEQ8FrequencyResponse(col, gridSize) {
+        const eq8Object = eq8ToneObject || eq8ModuleInstance?.toneObject;
+        
+        console.log('🎛️ EQ8 Visual Debug:', { col, gridSize, eq8Object: !!eq8Object, eq3: !!eq8Object?.eq3 });
+        
+        if (eq8Object && eq8Object.eq3) {
+            // Get current EQ settings
+            const lowGain = eq8Object.eq3.low.value || 0;    // dB
+            const midGain = eq8Object.eq3.mid.value || 0;    // dB  
+            const highGain = eq8Object.eq3.high.value || 0;  // dB
+            
+            console.log('🎛️ EQ3 Values:', { low: lowGain, mid: midGain, high: highGain });
+            
+            // Map column position to frequency band
+            // col 0 = low frequencies, col gridSize-1 = high frequencies
+            const freqPosition = col / (gridSize - 1); // 0 to 1
+            
+            let gainAtFreq = 0;
+            if (freqPosition < 0.33) {
+                // Low frequency range (0-33%)
+                const blend = freqPosition / 0.33;
+                gainAtFreq = lowGain * (1 - blend * 0.5); // Full low, fading to mid influence
+            } else if (freqPosition < 0.67) {
+                // Mid frequency range (33-67%)
+                const blend = (freqPosition - 0.33) / 0.34;
+                gainAtFreq = lowGain * (0.3 * (1 - blend)) + midGain + highGain * (0.3 * blend);
+            } else {
+                // High frequency range (67-100%)
+                const blend = (freqPosition - 0.67) / 0.33;
+                gainAtFreq = midGain * (0.5 * (1 - blend)) + highGain;
+            }
+            
+            // Convert dB to visual amplitude (-12dB to +12dB -> -1 to +1)
+            const normalizedGain = Math.max(-1, Math.min(1, gainAtFreq / 12));
+            
+            return normalizedGain;
+        }
+        
+        // Fallback: flat response (0dB = 0 visual offset)
+        return 0;
+    }
+
     calculateMixerFrequencyBand(col, gridSize) {
         const mixerObject = mixerToneObject || mixerModuleInstance?.toneObject;
 
