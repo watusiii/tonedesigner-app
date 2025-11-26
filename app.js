@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * T.E. GRID SYNTHESIS - MODULAR TONE SYNTHESIZER PLATFORM
+ *  Tone Designer - MODULAR TONE SYNTHESIZER PLATFORM
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * PROJECT OVERVIEW:
@@ -70,43 +70,43 @@ async function setupSynth() {
         document.addEventListener('click', async () => {
             if (Tone.context.state !== 'running') {
                 await Tone.start();
-                console.log('T.E. Grid Synthesis: Audio engine started');
+                console.log('  Audio engine started');
             }
         }, { once: true });
-        
+
         // Create oscillator module instance using new module factory
         // NOTE: Transition to modular architecture - oscillator now created via ModuleFactory
         oscillatorModuleInstance = ModuleFactory.create('oscillator', oscillatorNode.id, oscillatorNode.parameters);
         vco1ToneObject = oscillatorModuleInstance.toneObject;
-        
+
         // Create filter module instance using new module factory
         // NOTE: Transition to modular architecture - filter now created via ModuleFactory
         filterModuleInstance = ModuleFactory.create('filter', filterNode.id, filterNode.parameters);
         filterToneObject = filterModuleInstance.toneObject;
-        
+
         // Create envelope module instance using new module factory
         // NOTE: Transition to modular architecture - envelope now created via ModuleFactory
         envelopeModuleInstance = ModuleFactory.create('envelope', envelopeNode.id, envelopeNode.parameters);
         envelopeToneObject = envelopeModuleInstance.toneObject;
-        
+
         // Create LFO module instance using new module factory
         // NOTE: Transition to modular architecture - LFO now created via ModuleFactory
         lfoModuleInstance = ModuleFactory.create('lfo', lfoNode.id, lfoNode.parameters);
         lfoToneObject = lfoModuleInstance.toneObject;
-        
+
         // Create reverb module instance using new module factory
         // NOTE: Transition to modular architecture - reverb now created via ModuleFactory
         reverbModuleInstance = ModuleFactory.create('reverb', reverbNode.id, reverbNode.parameters);
         reverbToneObject = reverbModuleInstance.toneObject;
-        
+
         // Create mixer module instance using new module factory
         // NOTE: Multi-input mixer with proper architecture
         mixerModuleInstance = ModuleFactory.create('mixer', mixerNode.id, mixerNode.parameters);
         mixerToneObject = mixerModuleInstance.toneObject;
-        
+
         // DYNAMIC PATCHING LOGIC - Use the new compilation system
         compilePatching();
-        
+
         // Add window resize handler for cable position tracking
         window.addEventListener('resize', () => {
             console.log('🔌 Window resized - redrawing cables...');
@@ -117,20 +117,20 @@ async function setupSynth() {
                 }
             }, 100); // Small delay to ensure layout has updated
         });
-        
+
         // Start the oscillator and LFO immediately
         vco1ToneObject.start();
         lfoToneObject.start();
-        
+
         // Initialize menu toggle functionality
         initializeMenu();
-        
+
         // Initialize add module button
         initializeAddModuleButton();
-        
+
         // Initialize global synth nodes array
         synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode, mixerNode];
-        
+
         // Initial sync to ensure Tone.js objects match data structures
         syncToneEngine(oscillatorNode);
         syncToneEngine(filterNode);
@@ -138,41 +138,41 @@ async function setupSynth() {
         syncToneEngine(lfoNode);
         syncToneEngine(reverbNode);
         syncToneEngine(mixerNode); // Re-enabled with proper multi-input architecture
-        
+
         // Initialize modules UI - render both modules side by side
         initializeModules();
-        
+
         // Setup interactive knob functionality (call after DOM is ready)
         setTimeout(() => {
             setupKnobInteraction();
             setupSelectorInteraction();
         }, 0);
-        
+
         // Setup multiplier functionality
         setupMultiplierInteraction();
-        
+
         // Setup virtual keyboard
         setupVirtualKeyboard();
-        
+
         // Setup code panel toggle functionality
         setupCodePanelToggle();
-        
+
         // Setup code copy functionality
         setupCopyCode();
-        
+
         // Initial code display update
         updateCodeDisplay();
-        
+
         // Initialize P5 Canvas Manager
         initializeP5Manager();
-        
+
         // Initialize PatchingController AFTER DOM is fully ready
         setTimeout(() => {
             const svgElement = document.getElementById('patch-svg');
             const ports = document.querySelectorAll('.patch-port');
-            
+
             console.log(`🔌 Found ${ports.length} ports in DOM`);
-            
+
             if (svgElement && ports.length > 0) {
                 window.patchingController = new PatchingController(
                     currentPatchConnections,
@@ -181,10 +181,10 @@ async function setupSynth() {
                     svgElement
                 );
                 window.patchingController.initializeListeners();
-                
+
                 // Draw initial cables to show existing connections
                 drawPatchCables();
-                
+
                 console.log('🔌 PatchingController initialized successfully');
             } else {
                 console.error('🔌 Could not find patch-svg element or ports');
@@ -192,11 +192,11 @@ async function setupSynth() {
                 console.error('Ports found:', ports.length);
             }
         }, 100); // Small delay to ensure DOM is ready
-        
-        console.log('T.E. Grid Synthesis: Synthesizer platform initialized');
-        
+
+        console.log('  Synthesizer platform initialized');
+
     } catch (error) {
-        console.error('T.E. Grid Synthesis: Setup failed', error);
+        console.error('  Setup failed', error);
     }
 }
 
@@ -437,7 +437,7 @@ class P5CanvasManager {
     constructor() {
         this.canvases = new Map();
     }
-    
+
     /**
      * Create a new P5 canvas for wave visualization
      * @param {string} containerId - The ID of the container element
@@ -450,7 +450,7 @@ class P5CanvasManager {
             console.error(`P5 Canvas Manager: Container not found for ${containerId}`);
             return null;
         }
-        
+
         // Default options
         const config = {
             amplitude: options.amplitude || 50,
@@ -461,38 +461,38 @@ class P5CanvasManager {
             containerId: containerId, // Pass container ID for module detection
             ...options
         };
-        
+
         // Create a mutable reference for the wave type that can be updated
         const waveTypeRef = { current: waveType };
-        
+
         const sketch = (p) => {
             let canvasWidth, canvasHeight;
-            
+
             p.setup = () => {
                 // Get container dimensions
                 const rect = container.getBoundingClientRect();
                 canvasWidth = rect.width;
                 canvasHeight = rect.height;
-                
+
                 // Create canvas and attach to container
                 const canvas = p.createCanvas(canvasWidth, canvasHeight);
                 canvas.parent(container);
-                
+
                 // Clear any existing content
                 container.innerHTML = '';
                 container.appendChild(canvas.canvas);
             };
-            
+
             p.draw = () => {
                 p.background(config.backgroundColor);
                 p.stroke(config.strokeColor);
                 p.strokeWeight(config.strokeWeight);
                 p.noFill();
-                
+
                 // Use the current wave type from the mutable reference
                 this.drawWaveform(p, waveTypeRef.current, canvasWidth, canvasHeight, config);
             };
-            
+
             // Handle window resize
             p.windowResized = () => {
                 const rect = container.getBoundingClientRect();
@@ -503,7 +503,7 @@ class P5CanvasManager {
                 }
             };
         };
-        
+
         const p5Instance = new p5(sketch);
         this.canvases.set(containerId, {
             instance: p5Instance,
@@ -511,10 +511,10 @@ class P5CanvasManager {
             waveTypeRef: waveTypeRef,
             config: config
         });
-        
+
         return p5Instance;
     }
-    
+
     /**
      * Draw pixel matrix waveform display (16x16 for most, 32x32 for ADSR)
      * @param {Object} p - P5.js instance
@@ -527,7 +527,7 @@ class P5CanvasManager {
         // Use pixel matrix style for ALL modules
         this.drawPixelMatrixWaveform(p, waveType, width, height, config);
     }
-    
+
     /**
      * Check if canvas belongs to LFO module by container ID
      * @param {string} containerId - Container ID of the canvas
@@ -535,14 +535,14 @@ class P5CanvasManager {
      */
     isLFOModule(containerId) {
         if (!containerId) return false;
-        
+
         const container = document.getElementById(containerId);
         if (!container) return false;
-        
+
         const module = container.closest('.synth-module');
         return module && module.dataset.moduleId && module.dataset.moduleId.includes('lfo');
     }
-    
+
     /**
      * LFO: Pixel line rendering for LFO modules only
      * @param {Object} p - P5.js instance
@@ -553,23 +553,23 @@ class P5CanvasManager {
      */
     drawPixelLineWaveform(p, waveType, width, height, config) {
         console.log(`drawPixelLineWaveform CALLED for waveType: ${waveType}, container: ${config.containerId}`);
-        
+
         // Inverted color scheme: black background, white pixels
         p.background(0); // Black background
         p.fill(255); // White pixels
         p.noStroke(); // No stroke for pixel dots
-        
+
         const centerY = height / 2;
         const amplitude = height * 0.35; // Use 70% of height for wave amplitude
         const resolution = width * 2; // Higher resolution for smooth line
         const pixelSize = 4; // Bigger pixel dots (2x size)
         const pixelSpacing = 1; // Solid line - no gaps between pixels
-        
+
         // LFO waveform rendering using pixel dots
         for (let i = 0; i < resolution; i += pixelSpacing) {
             const x = p.map(i, 0, resolution, 0, width);
             let waveValue = 0;
-            
+
             // Get actual LFO frequency with multiplier
             let lfoFrequency = 1; // Default fallback
             let multiplier = 1; // Default multiplier
@@ -577,13 +577,13 @@ class P5CanvasManager {
                 lfoFrequency = parseFloat(lfoNode.parameters.frequency) || 1;
                 multiplier = parseFloat(lfoNode.parameters.multiplier) || 1;
             }
-            
+
             // Apply multiplier and calculate cycles
             const effectiveFreq = lfoFrequency * multiplier;
             const cyclesToShow = effectiveFreq * 2;
-            
+
             const t = p.map(i, 0, resolution, 0, p.TWO_PI * cyclesToShow);
-            
+
             switch (waveType) {
                 case 'sine':
                     waveValue = Math.sin(t);
@@ -605,22 +605,22 @@ class P5CanvasManager {
                 default:
                     waveValue = Math.sin(t); // Default to sine
             }
-            
+
             // Calculate Y position for this pixel
             const y = centerY - (waveValue * amplitude);
-            
+
             // Draw pixel dot at this position
-            p.rect(x - pixelSize/2, y - pixelSize/2, pixelSize, pixelSize);
+            p.rect(x - pixelSize / 2, y - pixelSize / 2, pixelSize, pixelSize);
         }
-        
+
         // Optional: Add a subtle center line using pixel dots
         p.fill(80); // Dark gray pixels for center line
         for (let x = 0; x < width; x += pixelSpacing * 2) {
             p.rect(x - 0.5, centerY - 0.5, 1, 1);
         }
-        
+
     }
-    
+
     /**
      * ORIGINAL: Pixel matrix rendering for non-LFO modules
      * @param {Object} p - P5.js instance
@@ -635,13 +635,13 @@ class P5CanvasManager {
         const pixelWidth = width / gridSize;
         const pixelHeight = height / gridSize;
         const centerRow = Math.floor(gridSize / 2);
-        
+
         // Clear background
         p.background(255); // White background
-        
+
         // Create a 2D array to track which pixels should be lit
         const pixelMap = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
-        
+
         // Calculate waveform points and draw lines between them
         const wavePoints = [];
         for (let col = 0; col < gridSize; col++) {
@@ -650,15 +650,15 @@ class P5CanvasManager {
             const container = document.getElementById(config.containerId);
             const module = container?.closest('.synth-module');
             const isLFO = module && module.dataset.moduleId && module.dataset.moduleId.includes('lfo');
-            
+
             if (isLFO && lfoNode && lfoNode.parameters) {
                 const lfoFreq = parseFloat(lfoNode.parameters.frequency) || 1;
                 cycles = lfoFreq * 2; // Convert frequency to cycles
             }
-            
+
             const t = p.map(col, 0, gridSize - 1, 0, p.TWO_PI * cycles); // Use calculated cycles
             let waveValue = 0;
-            
+
             switch (waveType) {
                 case 'sine':
                     waveValue = Math.sin(t + (isLFO ? 0 : p.frameCount * 0.05));
@@ -699,29 +699,29 @@ class P5CanvasManager {
                 default:
                     waveValue = 0;
             }
-            
+
             // Convert wave value to row position
             const waveRow = Math.round(centerRow - (waveValue * (gridSize / 4))); // Scale to fit grid
             wavePoints.push({ col, row: Math.max(0, Math.min(gridSize - 1, waveRow)) });
         }
-        
+
         // Draw lines between consecutive points to fill gaps
         for (let i = 0; i < wavePoints.length - 1; i++) {
             const point1 = wavePoints[i];
             const point2 = wavePoints[i + 1];
-            
+
             // Light up the line between these two points
             this.drawPixelLine(pixelMap, point1.col, point1.row, point2.col, point2.row, gridSize);
         }
-        
+
         // Render the pixel grid
         for (let pixelCol = 0; pixelCol < gridSize; pixelCol++) {
             for (let pixelRow = 0; pixelRow < gridSize; pixelRow++) {
                 const x = pixelCol * pixelWidth;
                 const y = pixelRow * pixelHeight;
-                
+
                 const isLit = pixelMap[pixelRow][pixelCol];
-                
+
                 // Draw pixel
                 p.fill(isLit ? 0 : 248); // Black when lit, slightly gray when off
                 p.stroke(200); // Light gray grid lines
@@ -729,9 +729,9 @@ class P5CanvasManager {
                 p.rect(x, y, pixelWidth, pixelHeight);
             }
         }
-        
+
     }
-    
+
     /**
      * Draw a line between two pixel points using Bresenham's algorithm
      * @param {Array} pixelMap - 2D array representing the pixel grid
@@ -748,19 +748,19 @@ class P5CanvasManager {
         const sx = x0 < x1 ? 1 : -1;
         const sy = y0 < y1 ? 1 : -1;
         let err = dx - dy;
-        
+
         let x = x0;
         let y = y0;
-        
+
         while (true) {
             // Light up current pixel if it's within bounds
             if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
                 pixelMap[y][x] = true;
             }
-            
+
             // Check if we've reached the end point
             if (x === x1 && y === y1) break;
-            
+
             const e2 = 2 * err;
             if (e2 > -dy) {
                 err -= dy;
@@ -772,7 +772,7 @@ class P5CanvasManager {
             }
         }
     }
-    
+
     /**
      * Calculate ADSR envelope value based on actual parameter settings
      * @param {number} col - Current column (0 to gridSize-1)
@@ -782,7 +782,7 @@ class P5CanvasManager {
     calculateADSRValue(col, gridSize) {
         // Get actual ADSR parameters from the envelope node
         let attack = 0.1, decay = 0.3, sustain = 0.7, release = 0.4;
-        
+
         // Get real values from the envelope node
         if (window.envelopeNode && window.envelopeNode.parameters) {
             attack = parseFloat(window.envelopeNode.parameters.attack) || 0.1;
@@ -790,28 +790,28 @@ class P5CanvasManager {
             sustain = parseFloat(window.envelopeNode.parameters.sustain) || 0.7;
             release = parseFloat(window.envelopeNode.parameters.release) || 0.4;
         }
-        
+
         // Normalize parameters for visual representation
         const totalTime = attack + decay + release + 1.0; // +1 for sustain display time
         const attackTime = attack / totalTime;
         const decayTime = decay / totalTime;
         const sustainTime = 1.0 / totalTime; // Fixed time for sustain display
         const releaseTime = release / totalTime;
-        
+
         // Calculate cumulative phase boundaries
         const attackEnd = attackTime;
         const decayEnd = attackEnd + decayTime;
         const sustainEnd = decayEnd + sustainTime;
         const releaseEnd = sustainEnd + releaseTime;
-        
+
         // Normalize column position to 0-1 range
         const progress = col / (gridSize - 1);
-        
+
         // Scale progress to fit within the total envelope time
         const scaledProgress = progress * releaseEnd;
-        
+
         let waveValue = -1; // Start at bottom (silence)
-        
+
         if (scaledProgress <= attackEnd) {
             // Attack phase - exponential rise from 0 to 1
             const attackProgress = scaledProgress / attackEnd;
@@ -830,10 +830,10 @@ class P5CanvasManager {
             const sustainLevel = sustain * 2 - 1;
             waveValue = sustainLevel + (-1 - sustainLevel) * Math.pow(releaseProgress, 2);
         }
-        
+
         return Math.max(-1, Math.min(1, waveValue)); // Clamp to -1 to 1 range
     }
-    
+
     /**
      * Calculate static reverb decay visualization
      * @param {number} col - Current column (0 to gridSize-1)
@@ -843,27 +843,27 @@ class P5CanvasManager {
     calculateReverbStatic(col, gridSize) {
         // Get actual reverb parameters from the reverb node
         let decay = 1.5, wet = 0.5;
-        
+
         // Get real values from the reverb node
         if (window.reverbNode && window.reverbNode.parameters) {
             decay = parseFloat(window.reverbNode.parameters.decay) || 1.5;
             wet = parseFloat(window.reverbNode.parameters.wet) || 0.5;
         }
-        
+
         // Simple exponential decay from left to right
         const progress = col / (gridSize - 1); // 0 to 1 across the display
-        
+
         // Create exponential decay curve
         // Map decay parameter (0.1 to 10 seconds) to decay rate
         const decayRate = 1.0 / Math.max(decay, 0.1); // Higher decay = slower rate
         const amplitude = Math.pow(Math.E, -progress * decayRate * 5) * wet;
-        
+
         // Convert to -1 to 1 range
         const waveValue = amplitude * 2 - 1;
-        
+
         return Math.max(-1, Math.min(1, waveValue));
     }
-    
+
     /**
      * Calculate 8-band frequency analyzer visualization for mixer
      * @param {number} col - Current column (0 to gridSize-1)
@@ -872,15 +872,15 @@ class P5CanvasManager {
      */
     calculateMixerFrequencyBand(col, gridSize) {
         const mixerObject = mixerToneObject || mixerModuleInstance?.toneObject;
-        
+
         if (mixerObject && mixerObject.analyzer) {
             const fftData = mixerObject.analyzer.getValue();
-            
+
             // Simple linear mapping to first part of FFT data (where audio actually is)
             // Skip the very high frequency bins that have no musical content
             const usefulBins = Math.floor(fftData.length * 0.3); // Only use first 30% of FFT bins
             const binIndex = Math.floor((col / gridSize) * usefulBins);
-            
+
             if (binIndex < fftData.length) {
                 const dbValue = fftData[binIndex] || -80;
                 if (dbValue > -70) { // If there's actual audio
@@ -891,44 +891,44 @@ class P5CanvasManager {
                 }
             }
         }
-        
+
         // Only show animation if mixer has never been used
         if (window.mixerHasBeenUsed) {
             return 0; // Flat line after first use
         }
-        
+
         // Complex fun animation when no audio
         const time = Date.now() * 0.001;
-        
+
         // Multiple overlapping waves at different speeds and phases
         const wave1 = Math.sin(time * 1.8 + col * 0.4) * 0.3;
         const wave2 = Math.sin(time * 2.7 + col * 0.8 + Math.PI * 0.33) * 0.25;
         const wave3 = Math.sin(time * 3.2 - col * 0.3 + Math.PI * 0.67) * 0.2;
-        
+
         // Pulsing bass effect on left side
         const bassBoost = col < 4 ? Math.sin(time * 5 + col) * 0.4 : 0;
-        
+
         // Sparkle effect on high end
         const sparkle = col > 10 ? Math.sin(time * 8 + col * 2) * Math.sin(time * 12) * 0.3 : 0;
-        
+
         // Moving peak that sweeps across
         const sweepPos = (Math.sin(time * 0.8) + 1) * 0.5 * gridSize;
         const peakDist = Math.abs(col - sweepPos);
         const movingPeak = Math.exp(-peakDist * 0.3) * 0.6 * Math.sin(time * 6);
-        
+
         // Random flutter
         const flutter = (Math.random() - 0.5) * 0.1 * Math.sin(time * 15);
-        
+
         return wave1 + wave2 + wave3 + bassBoost + sparkle + movingPeak + flutter;
-        
+
         try {
             // Get FFT data (frequency domain analysis)
             const fftData = mixerObject.analyzer.getValue();
-            
+
             // Map column to one of 8 frequency bands
             const bandIndex = Math.floor((col / gridSize) * 8);
             const bandsPerFFTBin = Math.floor(fftData.length / 8);
-            
+
             // Calculate average amplitude for this frequency band
             let bandAmplitude = 0;
             for (let i = 0; i < bandsPerFFTBin; i++) {
@@ -941,13 +941,13 @@ class P5CanvasManager {
                 }
             }
             bandAmplitude /= bandsPerFFTBin;
-            
+
             // Normalize and enhance for visualization
             const normalizedAmplitude = Math.min(1, bandAmplitude * 10);
-            
+
             // Convert to -1 to 1 range for wave visualization
             return normalizedAmplitude * 2 - 1;
-            
+
         } catch (error) {
             // Fallback to animated bars
             const bandIndex = Math.floor((col / gridSize) * 8);
@@ -956,8 +956,8 @@ class P5CanvasManager {
             return baseAmplitude * (Math.random() * 0.4 + 0.6);
         }
     }
-    
-    
+
+
     /**
      * Calculate filter frequency response visualization
      * @param {number} col - Current column (0 to gridSize-1)
@@ -968,7 +968,7 @@ class P5CanvasManager {
     calculateFilterResponse(col, gridSize, filterType) {
         // Get actual filter parameters
         let frequency = 8000, Q = 1, type = 'lowpass';
-        
+
         // Get real values from the filter node
         const filterNodes = [window.filterNode, filterNode].filter(Boolean);
         if (filterNodes.length > 0) {
@@ -979,17 +979,17 @@ class P5CanvasManager {
                 type = node.parameters.type || 'lowpass';
             }
         }
-        
+
         // Map column to frequency range (20Hz to 20kHz, logarithmic)
         const progress = col / (gridSize - 1);
         const minFreq = 20;
         const maxFreq = 20000;
         const currentFreq = minFreq * Math.pow(maxFreq / minFreq, progress);
-        
+
         // Calculate filter response at this frequency
         let response = 0;
         const cutoffRatio = currentFreq / frequency;
-        
+
         switch (type) {
             case 'lowpass':
                 // Low-pass filter response (6dB/octave rolloff)
@@ -999,7 +999,7 @@ class P5CanvasManager {
                     response = 1 / Math.sqrt(1 + Math.pow(cutoffRatio / Q, 2));
                 }
                 break;
-                
+
             case 'highpass':
                 // High-pass filter response (6dB/octave rolloff)
                 if (cutoffRatio >= 1) {
@@ -1008,27 +1008,27 @@ class P5CanvasManager {
                     response = 1 / Math.sqrt(1 + Math.pow(1 / (cutoffRatio * Q), 2));
                 }
                 break;
-                
+
             case 'bandpass':
                 // Band-pass filter response (peak at cutoff frequency)
                 const distance = Math.abs(Math.log2(cutoffRatio));
                 response = 1 / Math.sqrt(1 + Math.pow(distance * Q * 2, 2));
                 break;
-                
+
             case 'notch':
                 // Notch filter response (minimum at cutoff frequency)
                 const notchDistance = Math.abs(Math.log2(cutoffRatio));
                 response = Math.sqrt(Math.pow(notchDistance * Q, 2) / (1 + Math.pow(notchDistance * Q, 2)));
                 break;
         }
-        
+
         // Convert response (0 to 1) to wave value (-1 to 1)
         // Map 0 response to bottom, 1 response to top
         const waveValue = response * 2 - 1;
-        
+
         return Math.max(-1, Math.min(1, waveValue));
     }
-    
+
     /**
      * Update waveform configuration
      * @param {string} containerId - Container ID
@@ -1040,7 +1040,7 @@ class P5CanvasManager {
             Object.assign(canvas.config, newConfig);
         }
     }
-    
+
     /**
      * Update waveform type
      * @param {string} containerId - Container ID
@@ -1057,7 +1057,7 @@ class P5CanvasManager {
             console.log(`P5 Canvas Manager: Updated wave type to ${newWaveType} for ${containerId}`);
         }
     }
-    
+
     /**
      * Remove a canvas instance
      * @param {string} containerId - Container ID
@@ -1069,7 +1069,7 @@ class P5CanvasManager {
             this.canvases.delete(containerId);
         }
     }
-    
+
     /**
      * Clean up all canvases
      */
@@ -1123,10 +1123,10 @@ const currentPatchConnections = [
  */
 function compilePatching() {
     console.log('🔌 Compiling patch connections...');
-    
+
     // STEP 1: Disconnect ALL Tone.js objects to prevent ghost connections
     disconnectAllModules();
-    
+
     // STEP 2: Parse and apply each connection from currentPatchConnections
     currentPatchConnections.forEach((connection, index) => {
         try {
@@ -1136,9 +1136,9 @@ function compilePatching() {
             console.error(`❌ Failed to apply connection: ${connection.source} → ${connection.target}`, error);
         }
     });
-    
+
     console.log(`🔌 Patch compilation complete: ${currentPatchConnections.length} connections applied`);
-    
+
     // STEP 3: Update visual cable representation
     drawPatchCables();
 }
@@ -1149,7 +1149,7 @@ function compilePatching() {
  */
 function disconnectAllModules() {
     console.log('🔌 Disconnecting all modules...');
-    
+
     // Disconnect all module instances created by ModuleFactory
     if (oscillatorModuleInstance?.toneObject) {
         oscillatorModuleInstance.toneObject.disconnect();
@@ -1173,14 +1173,14 @@ function disconnectAllModules() {
             mixerModuleInstance.toneObject.channelGains.forEach(gain => gain.disconnect());
         }
     }
-    
+
     // Also disconnect legacy global objects for safety
     if (vco1ToneObject) vco1ToneObject.disconnect();
     if (filterToneObject) filterToneObject.disconnect();
     if (envelopeToneObject) envelopeToneObject.disconnect();
     if (lfoToneObject) lfoToneObject.disconnect();
     if (reverbToneObject) reverbToneObject.disconnect();
-    
+
     console.log('🔌 All modules disconnected');
 }
 
@@ -1190,10 +1190,10 @@ function disconnectAllModules() {
  */
 function applyConnection(connection) {
     const { source, target, type } = connection;
-    
+
     // Parse source and target
     const [sourceModuleId, sourcePort] = source.split('/');
-    
+
     // Special handling for mixer input format: mixer-1/input/1
     let targetModuleId, targetPort;
     if (target.includes('/input/')) {
@@ -1203,7 +1203,7 @@ function applyConnection(connection) {
     } else {
         [targetModuleId, targetPort] = target.split('/');
     }
-    
+
     console.log(`🔌 CONNECTION PARSING: ${source} → ${target}`, {
         targetModuleId: targetModuleId,
         targetPort: targetPort,
@@ -1211,13 +1211,13 @@ function applyConnection(connection) {
         startsWithAudioIn: targetPort?.startsWith('audio-in/'),
         fullTarget: target
     });
-    
+
     // Get source Tone.js object
     const sourceObject = getToneObjectById(sourceModuleId);
     if (!sourceObject) {
         throw new Error(`Source module not found: ${sourceModuleId}`);
     }
-    
+
     // Handle different connection types
     if (type === 'audio') {
         if (target === 'destination' || targetModuleId === 'destination') {
@@ -1234,15 +1234,15 @@ function applyConnection(connection) {
             // Special handling for mixer input connections
             const inputNumber = parseInt(targetPort.replace('input/', '')) - 1; // Convert to 0-based index
             const mixerObject = getToneObjectById(targetModuleId);
-            
+
             if (!mixerObject || !mixerObject.inputGains) {
                 throw new Error(`Mixer not found or not properly initialized: ${targetModuleId}`);
             }
-            
+
             if (inputNumber < 0 || inputNumber >= mixerObject.inputGains.length) {
                 throw new Error(`Invalid mixer input: ${inputNumber + 1}`);
             }
-            
+
             // Connect source to the specific input gain node
             console.log(`🔌 MIXER CONNECTION DEBUG:`, {
                 sourceModule: sourceModuleId,
@@ -1267,7 +1267,7 @@ function applyConnection(connection) {
         if (!targetObject) {
             throw new Error(`Target module not found: ${targetModuleId}`);
         }
-        
+
         // Connect to specific parameter (e.g., filter.frequency)
         if (targetPort && targetObject[targetPort]) {
             sourceObject.connect(targetObject[targetPort]);
@@ -1321,11 +1321,11 @@ function getPortInfo(port) {
     const signal = port.getAttribute('data-signal');
     const module = port.closest('.synth-module');
     const moduleId = module?.getAttribute('data-module-id');
-    
+
     // Parse port type (e.g., 'audio-out', 'cv-in')
     const [signalType, direction] = portType.split('-');
     const portName = direction === 'out' ? `${signalType}_out` : `${signalType}_in`;
-    
+
     return {
         moduleId,
         portName,
@@ -1343,10 +1343,10 @@ function getPortInfo(port) {
 function getPortCoordinates(port) {
     const rect = port.getBoundingClientRect();
     const svgRect = document.getElementById('patch-svg')?.getBoundingClientRect();
-    
+
     return {
-        x: rect.left + rect.width/2 - (svgRect?.left || 0),
-        y: rect.top + rect.height/2 - (svgRect?.top || 0)
+        x: rect.left + rect.width / 2 - (svgRect?.left || 0),
+        y: rect.top + rect.height / 2 - (svgRect?.top || 0)
     };
 }
 
@@ -1359,14 +1359,14 @@ function getPortCoordinates(port) {
  */
 function createConnection(source, target, type) {
     console.log(`🔌 Creating connection: ${source} → ${target} (${type})`);
-    
+
     // Add to currentPatchConnections
     currentPatchConnections.push({
         source,
         target,
         type
     });
-    
+
     // Recompile patching
     compilePatching();
 }
@@ -1378,16 +1378,16 @@ function createConnection(source, target, type) {
  */
 function removePatchConnection(source, target) {
     console.log(`🗑️ Removing connection: ${source} → ${target}`);
-    
+
     // Remove from currentPatchConnections
-    const index = currentPatchConnections.findIndex(conn => 
+    const index = currentPatchConnections.findIndex(conn =>
         conn.source === source && conn.target === target
     );
-    
+
     if (index !== -1) {
         currentPatchConnections.splice(index, 1);
         console.log('🗑️ Connection removed from data structure');
-        
+
         // Recompile patching
         compilePatching();
     } else {
@@ -1411,10 +1411,10 @@ function drawPatchCables() {
         console.warn('🔌 No SVG container found for drawing cables');
         return;
     }
-    
+
     // Clear existing cables
     svg.innerHTML = '';
-    
+
     // Draw each connection
     currentPatchConnections.forEach((connection, index) => {
         try {
@@ -1426,12 +1426,12 @@ function drawPatchCables() {
             console.warn(`🔌 Failed to draw cable ${connection.source} → ${connection.target}:`, error);
         }
     });
-    
+
     // Refresh click listeners for cable removal
     if (window.patchingController) {
         window.patchingController.refreshCableListeners();
     }
-    
+
     console.log(`🔌 Drew ${svg.children.length} of ${currentPatchConnections.length} patch cables`);
 }
 
@@ -1443,11 +1443,11 @@ function drawPatchCables() {
  */
 function createCablePath(connection, index) {
     const { source, target, type } = connection;
-    
+
     // Find source and target ports
     const sourcePort = findPortByID(source);
     const targetPort = findPortByID(target);
-    
+
     if (!sourcePort || !targetPort) {
         // For CV connections to parameters, draw cable to CV input port instead
         if (type === 'cv' && target.includes('/frequency')) {
@@ -1461,33 +1461,33 @@ function createCablePath(connection, index) {
         console.warn(`🔌 Could not find ports for connection: ${source} → ${target}`);
         return null;
     }
-    
+
     // Get coordinates
     const sourceCoords = getPortCoordinates(sourcePort);
     const targetCoords = getPortCoordinates(targetPort);
-    
+
     // Create cable path element
     const cable = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    
+
     // Generate curved cable path
     const pathData = generateCablePath(sourceCoords, targetCoords);
     cable.setAttribute('d', pathData);
-    
+
     // Style the cable
     cable.setAttribute('class', 'patch-cable');
     cable.setAttribute('data-signal', type);
     cable.setAttribute('data-cable', `cable-${index}`);
     cable.setAttribute('data-connection', `${source} → ${target}`);
     cable.style.pointerEvents = 'auto'; // Enable click for removal
-    
+
     // Set color based on signal type - use CSS custom properties to preserve hover effects
     const color = getCableColor(type);
     cable.style.stroke = color;
     cable.style.fill = 'none';
     cable.style.cursor = 'pointer';
-    
+
     // Don't set strokeWidth inline - let CSS handle it for hover effects
-    
+
     return cable;
 }
 
@@ -1497,22 +1497,22 @@ function createCablePath(connection, index) {
 function createCablePathBetweenPorts(sourcePort, targetPort, type, index, originalConnection) {
     const sourceCoords = getPortCoordinates(sourcePort);
     const targetCoords = getPortCoordinates(targetPort);
-    
+
     const cable = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     const pathData = generateCablePath(sourceCoords, targetCoords);
     cable.setAttribute('d', pathData);
-    
+
     cable.setAttribute('class', 'patch-cable');
     cable.setAttribute('data-signal', type);
     cable.setAttribute('data-cable', `cable-${index}`);
     cable.setAttribute('data-connection', originalConnection);
     cable.style.pointerEvents = 'auto';
-    
+
     const color = getCableColor(type);
     cable.style.stroke = color;
     cable.style.fill = 'none';
     cable.style.cursor = 'pointer';
-    
+
     return cable;
 }
 
@@ -1526,18 +1526,18 @@ function generateCablePath(start, end) {
     const dx = end.x - start.x;
     const dy = end.y - start.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
+
     // Dynamic droop based on distance and direction
     const baseDroop = Math.min(60, Math.max(20, distance * 0.15));
     const directionFactor = dx >= 0 ? 1 : 0.7; // Less droop for backward connections
     const droop = baseDroop * directionFactor;
-    
+
     // Enhanced control points for more natural curves
     const cp1x = start.x + dx * 0.4;
     const cp1y = start.y + droop + (dy * 0.1);
     const cp2x = end.x - dx * 0.4;
     const cp2y = end.y + droop + (dy * 0.1);
-    
+
     return `
         M ${start.x} ${start.y}
         C ${cp1x} ${cp1y}
@@ -1557,7 +1557,7 @@ function getCableColor(signalType) {
         'cv': '#8866ff',       // TE Purple
         'gate': '#0066ff'      // TE Blue
     };
-    
+
     return colors[signalType] || colors.audio;
 }
 
@@ -1572,7 +1572,7 @@ function findPortByID(portId) {
         console.log('🔌 Destination connection - no visual cable needed');
         return null;
     }
-    
+
     // Handle mixer input format: mixer-1/input/1
     if (portId.includes('/input/')) {
         const [moduleId, , inputId] = portId.split('/');
@@ -1581,7 +1581,7 @@ function findPortByID(portId) {
             console.warn(`🔌 Module not found: ${moduleId}`);
             return null;
         }
-        
+
         // Find mixer input port by data-input-id attribute
         const port = module.querySelector(`[data-port-type="input"][data-input-id="${inputId}"]`);
         if (!port) {
@@ -1589,20 +1589,20 @@ function findPortByID(portId) {
         }
         return port;
     }
-    
+
     const [moduleId, portType] = portId.split('/');
-    
+
     // Find the module
     const module = document.querySelector(`[data-module-id="${moduleId}"]`);
     if (!module) {
         console.warn(`🔌 Module not found: ${moduleId}`);
         return null;
     }
-    
+
     // Convert underscore format to dash format for HTML attributes
     // audio_out -> audio-out, cv_out -> cv-out, etc.
     const htmlPortType = portType.replace('_', '-');
-    
+
     // Find the port within the module
     const port = module.querySelector(`[data-port-type="${htmlPortType}"]`);
     if (!port) {
@@ -1612,7 +1612,7 @@ function findPortByID(portId) {
         const availableTypes = Array.from(availablePorts).map(p => p.getAttribute('data-port-type'));
         console.log(`🔌 Available ports in ${moduleId}:`, availableTypes);
     }
-    
+
     return port;
 }
 
@@ -1630,23 +1630,23 @@ function findPortByID(portId) {
 function initializeP5Manager() {
     // Create new P5 canvas manager
     p5Manager = new P5CanvasManager();
-    
+
     // Wait for DOM to be fully rendered before creating canvases
     setTimeout(() => {
         // Find all wave visual elements and create P5 canvases
         const waveVisuals = document.querySelectorAll('.wave-visual');
-        
+
         waveVisuals.forEach((visual, index) => {
             const waveType = visual.dataset.waveType;
             const containerId = `wave-visual-${index}`;
-            
+
             // Set an ID for the container if it doesn't have one
             if (!visual.id) {
                 visual.id = containerId;
             }
-            
+
             // Create P5 canvas for all wave types including reverb ripples
-            
+
             // Create P5 canvas for other wave visuals
             if (waveType && visual.id) {
                 p5Manager.createWaveCanvas(visual.id, waveType, {
@@ -1656,14 +1656,14 @@ function initializeP5Manager() {
                     strokeColor: '#000000',
                     backgroundColor: '#ffffff'
                 });
-                
-                console.log(`T.E. Grid Synthesis: Created P5 canvas for ${waveType} wave (${visual.id})`);
+
+                console.log(`  Created P5 canvas for ${waveType} wave (${visual.id})`);
             } else {
-                console.warn(`T.E. Grid Synthesis: Could not create canvas - waveType: ${waveType}, visual.id: ${visual.id}`);
+                console.warn(`  Could not create canvas - waveType: ${waveType}, visual.id: ${visual.id}`);
             }
         });
-        
-        console.log('T.E. Grid Synthesis: P5 Canvas Manager initialized with wave visualizers');
+
+        console.log('  P5 Canvas Manager initialized with wave visualizers');
     }, 100); // Small delay to ensure DOM is ready
 }
 
@@ -1979,48 +1979,48 @@ function syncToneEngine(node) {
         vco1ToneObject.frequency.value = node.parameters.frequency;
         vco1ToneObject.type = node.parameters.waveform;
         vco1ToneObject.detune.value = node.parameters.detune;
-        
-        console.log(`T.E. Grid Synthesis: Synced ${node.id} - freq: ${node.parameters.frequency}Hz, wave: ${node.parameters.waveform}, detune: ${node.parameters.detune}¢`);
+
+        console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, wave: ${node.parameters.waveform}, detune: ${node.parameters.detune}¢`);
     } else if (node.id === "filter-1" && filterToneObject) {
         // Update Tone.js filter parameters from node data
         filterToneObject.frequency.value = node.parameters.frequency;
         filterToneObject.type = node.parameters.type;
         filterToneObject.Q.value = node.parameters.Q;
-        
-        console.log(`T.E. Grid Synthesis: Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.type}, Q: ${node.parameters.Q}`);
+
+        console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.type}, Q: ${node.parameters.Q}`);
     } else if (node.id === "envelope-1" && envelopeToneObject) {
         // Update Tone.js envelope parameters from node data
         envelopeToneObject.attack = node.parameters.attack;
         envelopeToneObject.decay = node.parameters.decay;
         envelopeToneObject.sustain = node.parameters.sustain;
         envelopeToneObject.release = node.parameters.release;
-        
-        console.log(`T.E. Grid Synthesis: Synced ${node.id} - attack: ${node.parameters.attack}s, decay: ${node.parameters.decay}s, sustain: ${node.parameters.sustain}, release: ${node.parameters.release}s`);
+
+        console.log(`  Synced ${node.id} - attack: ${node.parameters.attack}s, decay: ${node.parameters.decay}s, sustain: ${node.parameters.sustain}, release: ${node.parameters.release}s`);
     } else if (node.id === "lfo-1" && lfoToneObject) {
         // Update Tone.js LFO parameters from node data
         const multiplier = node.parameters.multiplier || 1;
         const effectiveFreq = node.parameters.frequency * multiplier;
-        
+
         lfoToneObject.frequency.value = effectiveFreq;
         lfoToneObject.type = node.parameters.type;
         lfoToneObject.min = node.parameters.min;
         lfoToneObject.max = node.parameters.max;
-        
-        console.log(`T.E. Grid Synthesis: Synced ${node.id} - freq: ${effectiveFreq}Hz (${node.parameters.frequency}Hz x ${multiplier}), type: ${node.parameters.type}, min: ${node.parameters.min}Hz, max: ${node.parameters.max}Hz`);
+
+        console.log(`  Synced ${node.id} - freq: ${effectiveFreq}Hz (${node.parameters.frequency}Hz x ${multiplier}), type: ${node.parameters.type}, min: ${node.parameters.min}Hz, max: ${node.parameters.max}Hz`);
     } else if (node.id === "reverb-1" && reverbToneObject) {
         // Update Tone.js Reverb parameters from node data
         reverbToneObject.decay = node.parameters.decay;
         reverbToneObject.wet.value = node.parameters.wet;
-        
-        console.log(`T.E. Grid Synthesis: Synced ${node.id} - decay: ${node.parameters.decay}s, wet: ${node.parameters.wet}`);
+
+        console.log(`  Synced ${node.id} - decay: ${node.parameters.decay}s, wet: ${node.parameters.wet}`);
     } else if (node.id === "mixer-1") {
         const mixerObject = getToneObjectById("mixer-1");
-        
+
         if (!mixerObject) {
-            console.error(`T.E. Grid Synthesis: Mixer object not found for ${node.id}`);
+            console.error(`  Mixer object not found for ${node.id}`);
             return;
         }
-        
+
         // Update Tone.js Mixer parameters from node data
         console.log('🔊 MIXER DEBUG: syncToneEngine called for mixer', {
             mixerObject: mixerObject,
@@ -2028,29 +2028,29 @@ function syncToneEngine(node) {
             inputGainsLength: mixerObject.inputGains?.length,
             parameters: node.parameters
         });
-        
+
         if (mixerObject.inputGains) {
             // Update individual input gains
             for (let i = 1; i <= 8; i++) {
                 const paramName = `channel${i}Gain`;
-                if (node.parameters[paramName] !== undefined && mixerObject.inputGains[i-1]) {
-                    const oldValue = mixerObject.inputGains[i-1].gain.value;
-                    mixerObject.inputGains[i-1].gain.value = node.parameters[paramName];
-                    console.log(`🔊 Updated mixer input ${i} gain: ${oldValue} → ${node.parameters[paramName]} (${mixerObject.inputGains[i-1].gain.value})`);
+                if (node.parameters[paramName] !== undefined && mixerObject.inputGains[i - 1]) {
+                    const oldValue = mixerObject.inputGains[i - 1].gain.value;
+                    mixerObject.inputGains[i - 1].gain.value = node.parameters[paramName];
+                    console.log(`🔊 Updated mixer input ${i} gain: ${oldValue} → ${node.parameters[paramName]} (${mixerObject.inputGains[i - 1].gain.value})`);
                 } else {
-                    console.log(`🔊 SKIPPED input ${i}: param=${node.parameters[paramName]}, gainNode=${!!mixerObject.inputGains[i-1]}`);
+                    console.log(`🔊 SKIPPED input ${i}: param=${node.parameters[paramName]}, gainNode=${!!mixerObject.inputGains[i - 1]}`);
                 }
             }
         } else {
             console.error('🔊 MIXER ERROR: No inputGains found on mixer object!');
         }
-        
+
         // Update master gain
         if (node.parameters.masterGain !== undefined) {
             mixerObject.volume.value = Tone.gainToDb(node.parameters.masterGain);
         }
-        
-        console.log(`T.E. Grid Synthesis: Synced ${node.id} - updated channel gains and master level`);
+
+        console.log(`  Synced ${node.id} - updated channel gains and master level`);
     }
 }
 
@@ -2073,7 +2073,7 @@ function initializeModules() {
         const reverbHTML = reverbModuleInstance ? reverbModuleInstance.element : renderReverbModule(reverbNode);
         // Use the mixer module created in setupSynth
         const mixerHTML = mixerModuleInstance ? mixerModuleInstance.element : renderMixerModule(mixerNode);
-        
+
         // Create a module container with flex layout, SVG overlay, and spacer
         appContainer.innerHTML = `
             <div class="modules-container" style="position: relative;">
@@ -2090,7 +2090,7 @@ function initializeModules() {
             <button id="add-module-button" class="add-module-button">+</button>
             <div class="scroll-spacer"></div>
         `;
-        
+
         // Add keyboard container to body
         const keyboardContainer = document.createElement('div');
         keyboardContainer.className = 'keyboard-container';
@@ -2114,8 +2114,8 @@ function initializeModules() {
             </div>
         `;
         document.body.appendChild(keyboardContainer);
-        
-        console.log('T.E. Grid Synthesis: All modules initialized');
+
+        console.log('  All modules initialized');
     }
 }
 
@@ -2128,7 +2128,7 @@ function initializeOscillatorModule() {
     if (appContainer) {
         const oscillatorHTML = renderOscillatorModule(oscillatorNode);
         appContainer.innerHTML = oscillatorHTML;
-        console.log('T.E. Grid Synthesis: Oscillator module initialized');
+        console.log('  Oscillator module initialized');
     }
 }
 
@@ -2138,49 +2138,49 @@ function initializeOscillatorModule() {
  */
 function setupKnobInteraction() {
     const knobs = document.querySelectorAll('.synth-knob');
-    
+
     knobs.forEach(knob => {
         let isDragging = false;
         let startY = 0;
         let startValue = 0;
         const param = knob.dataset.param;
-        
+
         knob.addEventListener('mousedown', (e) => {
             isDragging = true;
             startY = e.clientY;
             startValue = parseFloat(knob.dataset.value) || 0;
-            
+
             // Prevent text selection during drag
             e.preventDefault();
-            
+
             // Change cursor style
             knob.style.cursor = 'grabbing';
         });
-        
+
         // Touch events for mobile
         knob.addEventListener('touchstart', (e) => {
             isDragging = true;
             startY = e.touches[0].clientY;
             startValue = parseFloat(knob.dataset.value) || 0;
-            
+
             // Prevent scrolling and text selection
             e.preventDefault();
-            
+
             knob.style.cursor = 'grabbing';
         });
-        
+
         document.addEventListener('mousemove', (e) => {
             if (!isDragging || !param) return;
-            
+
             // Calculate value change based on vertical movement
             const deltaY = startY - e.clientY; // Inverted: up = increase
             let newValue = startValue;
-            
+
             if (param === 'frequency') {
                 // Check if this is an LFO frequency
                 const moduleElement = knob.closest('.synth-module');
                 const moduleId = moduleElement.dataset.moduleId;
-                
+
                 if (moduleId === 'lfo-1') {
                     // LFO frequency range: 1Hz to 20Hz with logarithmic scaling
                     const sensitivity = 1.5;
@@ -2244,12 +2244,12 @@ function setupKnobInteraction() {
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             }
-            
+
             // Determine which node to update based on module
             const moduleElement = knob.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
             let targetNode;
-            
+
             if (moduleId === 'oscillator-1') {
                 targetNode = oscillatorNode;
             } else if (moduleId === 'filter-1') {
@@ -2263,7 +2263,7 @@ function setupKnobInteraction() {
             } else if (moduleId === 'mixer-1') {
                 targetNode = mixerNode;
             }
-            
+
             if (targetNode) {
                 console.log(`🎛️ KNOB DEBUG: ${param} changed`, {
                     moduleId: moduleId,
@@ -2272,68 +2272,68 @@ function setupKnobInteraction() {
                     newValue: newValue,
                     targetNode: targetNode
                 });
-                
+
                 // Update data structure
                 targetNode.parameters[param] = newValue;
-                
+
                 // Update knob data attribute
                 knob.dataset.value = newValue;
-                
+
                 // Update visual feedback
                 updateKnobVisuals(knob, param, newValue);
-                
+
                 // Sync with Tone.js
                 console.log(`🎛️ KNOB DEBUG: Calling syncToneEngine for ${moduleId}/${param}`);
                 syncToneEngine(targetNode);
-                
+
                 // Update ADSR visual if this is an envelope parameter
                 if (moduleId === 'envelope-1' && p5Manager) {
                     const adsrCanvas = document.querySelector('[data-wave-type="adsr"]');
                     if (adsrCanvas && adsrCanvas.id) {
                         // The P5 canvas will automatically use the updated envelopeNode.parameters
                         // on the next frame since calculateADSRValue() reads from window.envelopeNode
-                        console.log(`T.E. Grid Synthesis: ADSR visual will update for ${param} = ${newValue}`);
+                        console.log(`  ADSR visual will update for ${param} = ${newValue}`);
                     }
                 }
-                
+
                 // Update reverb visual if this is a reverb parameter
                 if (moduleId === 'reverb-1' && p5Manager) {
                     const reverbCanvas = document.querySelector('[data-wave-type="reverb"]');
                     if (reverbCanvas && reverbCanvas.id) {
                         // The P5 canvas will automatically use the updated reverbNode.parameters
                         // on the next frame since calculateReverbStatic() reads from window.reverbNode
-                        console.log(`T.E. Grid Synthesis: Reverb visual will update for ${param} = ${newValue}`);
+                        console.log(`  Reverb visual will update for ${param} = ${newValue}`);
                     }
                 }
-                
+
                 // Update LFO visual if this is an LFO parameter
                 if (moduleId === 'lfo-1' && p5Manager) {
                     const lfoCanvas = document.querySelector('[data-module-id="lfo-1"] .wave-visual');
                     if (lfoCanvas && lfoCanvas.id) {
                         // The P5 canvas should automatically use the updated lfoNode.parameters
                         // on the next frame since drawSmoothWaveform() reads from window.lfoNode
-                        console.log(`T.E. Grid Synthesis: LFO visual will update for ${param} = ${newValue}`);
+                        console.log(`  LFO visual will update for ${param} = ${newValue}`);
                     }
                 }
-                
+
                 // Update code display in real-time
                 updateCodeDisplay();
             }
         });
-        
+
         // Touch move event for mobile
         document.addEventListener('touchmove', (e) => {
             if (!isDragging || !param) return;
-            
+
             // Calculate value change based on vertical movement
             const deltaY = startY - e.touches[0].clientY; // Inverted: up = increase
             let newValue = startValue;
-            
+
             if (param === 'frequency') {
                 // Check if this is an LFO frequency
                 const moduleElement = knob.closest('.synth-module');
                 const moduleId = moduleElement.dataset.moduleId;
-                
+
                 if (moduleId === 'lfo-1') {
                     // LFO frequency range: 1Hz to 20Hz with logarithmic scaling
                     const sensitivity = 1.5;
@@ -2397,12 +2397,12 @@ function setupKnobInteraction() {
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             }
-            
+
             // Determine which node to update based on module
             const moduleElement = knob.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
             let targetNode;
-            
+
             if (moduleId === 'oscillator-1') {
                 targetNode = oscillatorNode;
             } else if (moduleId === 'filter-1') {
@@ -2416,7 +2416,7 @@ function setupKnobInteraction() {
             } else if (moduleId === 'mixer-1') {
                 targetNode = mixerNode;
             }
-            
+
             if (targetNode) {
                 console.log(`🎛️ KNOB DEBUG: ${param} changed`, {
                     moduleId: moduleId,
@@ -2425,48 +2425,48 @@ function setupKnobInteraction() {
                     newValue: newValue,
                     targetNode: targetNode
                 });
-                
+
                 // Update data structure
                 targetNode.parameters[param] = newValue;
-                
+
                 // Update knob data attribute
                 knob.dataset.value = newValue;
-                
+
                 // Update visual feedback
                 updateKnobVisuals(knob, param, newValue);
-                
+
                 // Sync with Tone.js
                 console.log(`🎛️ KNOB DEBUG: Calling syncToneEngine for ${moduleId}/${param}`);
                 syncToneEngine(targetNode);
-                
+
                 // Update ADSR visual if this is an envelope parameter
                 if (moduleId === 'envelope-1' && p5Manager) {
                     const adsrCanvas = document.querySelector('[data-wave-type="adsr"]');
                     if (adsrCanvas && adsrCanvas.id) {
-                        console.log(`T.E. Grid Synthesis: ADSR visual will update for ${param} = ${newValue}`);
+                        console.log(`  ADSR visual will update for ${param} = ${newValue}`);
                     }
                 }
-                
+
                 // Update reverb visual if this is a reverb parameter
                 if (moduleId === 'reverb-1' && p5Manager) {
                     const reverbCanvas = document.querySelector('[data-wave-type="reverb"]');
                     if (reverbCanvas && reverbCanvas.id) {
-                        console.log(`T.E. Grid Synthesis: Reverb visual will update for ${param} = ${newValue}`);
+                        console.log(`  Reverb visual will update for ${param} = ${newValue}`);
                     }
                 }
-                
+
                 // Update code display in real-time
                 updateCodeDisplay();
             }
         }, { passive: false });
-        
+
         document.addEventListener('mouseup', () => {
             if (isDragging) {
                 isDragging = false;
                 knob.style.cursor = 'pointer';
             }
         });
-        
+
         // Touch end event for mobile
         document.addEventListener('touchend', () => {
             if (isDragging) {
@@ -2488,16 +2488,16 @@ function setupKnobInteraction() {
 function updateKnobVisuals(knob, param, value) {
     const indicator = knob.querySelector('.knob-indicator');
     const valueDisplay = knob.parentElement.querySelector('.control-value');
-    
+
     if (indicator && valueDisplay) {
         let rotation = 0;
         let displayText = '';
-        
+
         if (param === 'frequency') {
             // Check if this is an LFO frequency
             const moduleElement = knob.closest('.synth-module');
             const moduleId = moduleElement?.dataset.moduleId;
-            
+
             if (moduleId === 'lfo-1') {
                 // Map LFO frequency (1-20 Hz) to rotation (-135° to +135°)
                 const logMin = Math.log(1);
@@ -2573,10 +2573,10 @@ function updateKnobVisuals(knob, param, value) {
             rotation = -135 + (normalized * 270); // -135° to +135°
             displayText = `${Math.round(value * 100)}%`;
         }
-        
+
         // Apply rotation to indicator
         indicator.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
-        
+
         // Update value display
         valueDisplay.textContent = displayText;
     }
@@ -2593,119 +2593,119 @@ function setupSelectorInteraction() {
         selector.addEventListener('change', (e) => {
             const param = selector.dataset.param;
             const newValue = e.target.value;
-            
+
             // Determine which node to update based on module
             const moduleElement = selector.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
             let targetNode;
-            
+
             if (moduleId === 'oscillator-1') {
                 targetNode = oscillatorNode;
             } else if (moduleId === 'lfo-1') {
                 targetNode = lfoNode;
             }
-            
+
             if (targetNode && param) {
                 // Update data structure
                 targetNode.parameters[param] = newValue;
-                
+
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
-                
+
                 // Update P5 wave visual if it exists (for both waveform and type parameters)
                 if (p5Manager && (param === 'waveform' || param === 'type')) {
                     const waveVisual = moduleElement.querySelector('.wave-visual');
                     if (waveVisual && waveVisual.id) {
                         // Update wave visual data attribute
                         waveVisual.dataset.waveType = newValue;
-                        
+
                         // Update P5 canvas wave type
                         p5Manager.updateWaveType(waveVisual.id, newValue);
-                        
-                        console.log(`T.E. Grid Synthesis: Updated P5 wave visual to ${newValue} (param: ${param})`);
+
+                        console.log(`  Updated P5 wave visual to ${newValue} (param: ${param})`);
                     }
                 }
-                
+
                 // Update code display in real-time
                 updateCodeDisplay();
-                
-                console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}`);
+
+                console.log(`  Updated ${moduleId} ${param} to ${newValue}`);
             }
         });
     });
-    
+
     // Filter type selector
     const filterTypeSelectors = document.querySelectorAll('.filter-type-selector');
     filterTypeSelectors.forEach(selector => {
         selector.addEventListener('change', (e) => {
             const param = selector.dataset.param;
             const newValue = e.target.value;
-            
+
             // Determine which node to update based on module
             const moduleElement = selector.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
             let targetNode;
-            
+
             if (moduleId === 'filter-1') {
                 targetNode = filterNode;
             }
-            
+
             if (targetNode && param) {
                 // Update data structure
                 targetNode.parameters[param] = newValue;
-                
+
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
-                
+
                 // Update code display in real-time
                 updateCodeDisplay();
-                
-                console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}`);
+
+                console.log(`  Updated ${moduleId} ${param} to ${newValue}`);
             }
         });
     });
-    
+
     // LFO type selector
     const lfoTypeSelectors = document.querySelectorAll('.lfo-type-selector');
     lfoTypeSelectors.forEach(selector => {
         selector.addEventListener('change', (e) => {
             const param = selector.dataset.param;
             const newValue = e.target.value;
-            
+
             // Determine which node to update based on module
             const moduleElement = selector.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
             let targetNode;
-            
+
             if (moduleId === 'lfo-1') {
                 targetNode = lfoNode;
             }
-            
+
             if (targetNode && param) {
                 // Update data structure
                 targetNode.parameters[param] = newValue;
-                
+
                 // Sync with Tone.js
                 syncToneEngine(targetNode);
-                
+
                 // Update P5 wave visual if it exists (for LFO type changes)
                 if (p5Manager && param === 'type') {
                     const waveVisual = moduleElement.querySelector('.wave-visual');
                     if (waveVisual && waveVisual.id) {
                         // Update wave visual data attribute
                         waveVisual.dataset.waveType = newValue;
-                        
+
                         // Update P5 canvas wave type
                         p5Manager.updateWaveType(waveVisual.id, newValue);
-                        
-                        console.log(`T.E. Grid Synthesis: Updated LFO P5 wave visual to ${newValue}`);
+
+                        console.log(`  Updated LFO P5 wave visual to ${newValue}`);
                     }
                 }
-                
+
                 // Update code display in real-time
                 updateCodeDisplay();
-                
-                console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}`);
+
+                console.log(`  Updated ${moduleId} ${param} to ${newValue}`);
             }
         });
     });
@@ -2723,31 +2723,31 @@ function setupMultiplierInteraction() {
             const selector = option.closest('.multiplier-selector');
             const param = selector.dataset.param;
             const newValue = parseInt(option.dataset.value);
-            
+
             // Determine which node to update based on module
             const moduleElement = option.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
             let targetNode;
-            
+
             if (moduleId === 'lfo-1') {
                 targetNode = lfoNode;
             }
-            
+
             if (targetNode && param) {
                 // Update data structure
                 targetNode.parameters[param] = newValue;
-                
+
                 // Sync with Tone.js (this will apply the multiplier to the actual LFO frequency)
                 syncToneEngine(targetNode);
-                
+
                 // Update visual active state
                 selector.querySelectorAll('.multiplier-option').forEach(opt => opt.classList.remove('active'));
                 option.classList.add('active');
-                
+
                 // Update code display in real-time
                 updateCodeDisplay();
-                
-                console.log(`T.E. Grid Synthesis: Updated ${moduleId} ${param} to ${newValue}X`);
+
+                console.log(`  Updated ${moduleId} ${param} to ${newValue}X`);
             }
         });
     });
@@ -2763,22 +2763,22 @@ function playKey(note) {
     if (vco1ToneObject && envelopeToneObject) {
         // Get base frequency from VCO knob setting
         const baseFrequency = oscillatorNode.parameters.frequency;
-        
+
         // Convert note to frequency and calculate ratio
         const noteFrequency = Tone.Frequency(note).toFrequency();
         const C4Frequency = Tone.Frequency("C4").toFrequency(); // Reference frequency (261.63 Hz)
         const ratio = noteFrequency / C4Frequency;
-        
+
         // Apply the note ratio to the base frequency from the knob
         const finalFrequency = baseFrequency * ratio;
-        
+
         // Set the oscillator frequency
         vco1ToneObject.frequency.setValueAtTime(finalFrequency, Tone.now());
-        
+
         // Trigger the envelope with a short duration
         envelopeToneObject.triggerAttackRelease("8n", Tone.now());
-        
-        console.log(`T.E. Grid Synthesis: Playing note ${note} at ${finalFrequency.toFixed(2)}Hz (base: ${baseFrequency}Hz)`);
+
+        console.log(`Playing note ${note} at ${finalFrequency.toFixed(2)}Hz (base: ${baseFrequency}Hz)`);
     }
 }
 
@@ -2788,10 +2788,10 @@ function playKey(note) {
  */
 function setupVirtualKeyboard() {
     const keys = document.querySelectorAll('.key[data-note]');
-    
+
     keys.forEach(key => {
         const note = key.dataset.note;
-        
+
         if (note) {
             // Mouse events
             key.addEventListener('mousedown', (e) => {
@@ -2799,29 +2799,29 @@ function setupVirtualKeyboard() {
                 key.classList.add('pressed');
                 playKey(note);
             });
-            
+
             key.addEventListener('mouseup', () => {
                 key.classList.remove('pressed');
             });
-            
+
             key.addEventListener('mouseleave', () => {
                 key.classList.remove('pressed');
             });
-            
+
             // Touch events for mobile
             key.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 key.classList.add('pressed');
                 playKey(note);
             });
-            
+
             key.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 key.classList.remove('pressed');
             });
         }
     });
-    
+
     // Add Ableton-style computer keyboard mapping
     const keyToNote = {
         'a': 'C3',   // Root
@@ -2838,45 +2838,45 @@ function setupVirtualKeyboard() {
         'j': 'B3',   // B
         'k': 'C4'    // Octave C
     };
-    
+
     const activeKeys = new Set();
-    
+
     // Computer keyboard events
     document.addEventListener('keydown', (e) => {
         const key = e.key.toLowerCase();
-        
+
         if (keyToNote[key] && !activeKeys.has(key)) {
             e.preventDefault();
             activeKeys.add(key);
-            
+
             const note = keyToNote[key];
             const keyElement = document.querySelector(`.key[data-note="${note}"]`);
-            
+
             if (keyElement) {
                 keyElement.classList.add('pressed');
             }
-            
+
             playKey(note);
         }
     });
-    
+
     document.addEventListener('keyup', (e) => {
         const key = e.key.toLowerCase();
-        
+
         if (keyToNote[key] && activeKeys.has(key)) {
             e.preventDefault();
             activeKeys.delete(key);
-            
+
             const note = keyToNote[key];
             const keyElement = document.querySelector(`.key[data-note="${note}"]`);
-            
+
             if (keyElement) {
                 keyElement.classList.remove('pressed');
             }
         }
     });
-    
-    console.log('T.E. Grid Synthesis: Virtual keyboard setup complete with Ableton-style mapping');
+
+    console.log('Virtual keyboard setup complete with Ableton-style mapping');
 }
 
 /**
@@ -3001,8 +3001,8 @@ const playSynth = (note = "C4", duration = "4n") => {
 // playSynth("C4", "8n");  // Play C4 for an eighth note
 // playSynth("A3", "2n");  // Play A3 for a half note
 
-// Your T.E. Grid synthesizer is ready!
-console.log("🎛️ T.E. Grid Synthesis: Synthesizer loaded and ready");
+// Your  Tone Designer is ready!
+console.log("🎛️   Synthesizer loaded and ready");
 `;
 
     return code;
@@ -3027,12 +3027,12 @@ function updateCodeDisplay() {
 function setupCodePanelToggle() {
     const codePanel = document.getElementById('code-output-panel');
     const toggleTab = document.getElementById('code-toggle-tab');
-    
+
     if (codePanel && toggleTab) {
         toggleTab.addEventListener('click', () => {
             codePanel.classList.toggle('collapsed');
-            
-            console.log('T.E. Grid Synthesis: Code panel toggled');
+
+            console.log('  Code panel toggled');
         });
     }
 }
@@ -3044,26 +3044,26 @@ function setupCodePanelToggle() {
 function setupCopyCode() {
     const copyButton = document.getElementById('copy-button');
     const codeDisplay = document.getElementById('code-display');
-    
+
     if (copyButton && codeDisplay) {
         copyButton.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(codeDisplay.value);
-                
+
                 // Visual feedback
                 const originalText = copyButton.textContent;
                 copyButton.textContent = 'COPIED!';
                 copyButton.style.backgroundColor = 'var(--color-te-green)';
-                
+
                 setTimeout(() => {
                     copyButton.textContent = originalText;
                     copyButton.style.backgroundColor = '';
                 }, 1000);
-                
-                console.log('T.E. Grid Synthesis: Code copied to clipboard');
+
+                console.log('  Code copied to clipboard');
             } catch (err) {
-                console.error('T.E. Grid Synthesis: Failed to copy code', err);
-                
+                console.error('  Failed to copy code', err);
+
                 // Fallback: select all text for manual copy
                 codeDisplay.select();
                 codeDisplay.setSelectionRange(0, 99999);
@@ -3079,7 +3079,7 @@ function setupCopyCode() {
 function exportCode() {
     const code = generateCode();
     console.log('='.repeat(80));
-    console.log('T.E. GRID SYNTHESIS - GENERATED CODE');
+    console.log(' Tone Designer - GENERATED CODE');
     console.log('='.repeat(80));
     console.log(code);
     console.log('='.repeat(80));
@@ -3093,30 +3093,30 @@ function initializeMenu() {
     const menuButton = document.getElementById('menu-button');
     const slideMenu = document.getElementById('slide-menu');
     const header = document.querySelector('header');
-    
+
     if (menuButton && slideMenu && header) {
         // Set menu position dynamically based on actual header height
         const updateMenuPosition = () => {
             const headerHeight = header.getBoundingClientRect().height;
             slideMenu.style.top = `${headerHeight}px`;
         };
-        
+
         // Update position on load and resize
         updateMenuPosition();
         window.addEventListener('resize', updateMenuPosition);
-        
+
         menuButton.addEventListener('click', () => {
             slideMenu.classList.toggle('open');
             console.log('🍔 Menu toggled:', slideMenu.classList.contains('open') ? 'open' : 'closed');
         });
-        
+
         // Close menu when clicking outside
         document.addEventListener('click', (e) => {
             if (!menuButton.contains(e.target) && !slideMenu.contains(e.target)) {
                 slideMenu.classList.remove('open');
             }
         });
-        
+
         console.log('🍔 Menu system initialized');
     }
 }
@@ -3126,16 +3126,32 @@ function initializeMenu() {
  */
 function initializeAddModuleButton() {
     const addButton = document.getElementById('add-module-button');
-    
+
     if (addButton) {
         addButton.addEventListener('click', () => {
             console.log('➕ Add module button clicked - ready for module selection');
             // TODO: Implement module selection functionality
         });
-        
+
         console.log('➕ Add module button initialized');
     }
 }
 
 // Initialize the platform when the page loads
 document.addEventListener('DOMContentLoaded', setupSynth);
+
+// Disable right-click context menu and drag behaviors
+document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    return false;
+});
+
+document.addEventListener('dragstart', (e) => {
+    e.preventDefault();
+    return false;
+});
+
+document.addEventListener('selectstart', (e) => {
+    e.preventDefault();
+    return false;
+});
