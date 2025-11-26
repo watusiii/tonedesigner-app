@@ -547,8 +547,15 @@ const MixerModule = {
             inputGains.push(inputGain);
         }
         
-        // Attach input gains to master for easy access
+        // Create FFT analyzer for frequency visualization
+        const analyzer = new Tone.FFT(32); // 32 frequency bins
+        
+        // Connect analyzer directly to Tone.Destination to capture all output
+        Tone.Destination.connect(analyzer);
+        
+        // Attach components to master for easy access
         master.inputGains = inputGains;
+        master.analyzer = analyzer;
         
         return master;
     },

@@ -685,6 +685,10 @@ class P5CanvasManager {
                     // Reverb visualization - static impulse response display
                     waveValue = this.calculateReverbStatic(col, gridSize);
                     break;
+                case 'mixer':
+                    // 8-band frequency analyzer visualization
+                    waveValue = this.calculateMixerFrequencyBand(col, gridSize);
+                    break;
                 case 'lowpass':
                 case 'highpass':
                 case 'bandpass':
@@ -858,6 +862,99 @@ class P5CanvasManager {
         const waveValue = amplitude * 2 - 1;
         
         return Math.max(-1, Math.min(1, waveValue));
+    }
+    
+    /**
+     * Calculate 8-band frequency analyzer visualization for mixer
+     * @param {number} col - Current column (0 to gridSize-1)
+     * @param {number} gridSize - Size of the pixel grid
+     * @returns {number} - Wave value (-1 to 1)
+     */
+    calculateMixerFrequencyBand(col, gridSize) {
+        const mixerObject = mixerToneObject || mixerModuleInstance?.toneObject;
+        
+        if (mixerObject && mixerObject.analyzer) {
+            const fftData = mixerObject.analyzer.getValue();
+            
+            // Simple linear mapping to first part of FFT data (where audio actually is)
+            // Skip the very high frequency bins that have no musical content
+            const usefulBins = Math.floor(fftData.length * 0.3); // Only use first 30% of FFT bins
+            const binIndex = Math.floor((col / gridSize) * usefulBins);
+            
+            if (binIndex < fftData.length) {
+                const dbValue = fftData[binIndex] || -80;
+                if (dbValue > -70) { // If there's actual audio
+                    // Mark that audio has been used
+                    window.mixerHasBeenUsed = true;
+                    const normalized = Math.pow(10, (dbValue + 60) / 30);
+                    return Math.min(1, normalized) * 2 - 1;
+                }
+            }
+        }
+        
+        // Only show animation if mixer has never been used
+        if (window.mixerHasBeenUsed) {
+            return 0; // Flat line after first use
+        }
+        
+        // Complex fun animation when no audio
+        const time = Date.now() * 0.001;
+        
+        // Multiple overlapping waves at different speeds and phases
+        const wave1 = Math.sin(time * 1.8 + col * 0.4) * 0.3;
+        const wave2 = Math.sin(time * 2.7 + col * 0.8 + Math.PI * 0.33) * 0.25;
+        const wave3 = Math.sin(time * 3.2 - col * 0.3 + Math.PI * 0.67) * 0.2;
+        
+        // Pulsing bass effect on left side
+        const bassBoost = col < 4 ? Math.sin(time * 5 + col) * 0.4 : 0;
+        
+        // Sparkle effect on high end
+        const sparkle = col > 10 ? Math.sin(time * 8 + col * 2) * Math.sin(time * 12) * 0.3 : 0;
+        
+        // Moving peak that sweeps across
+        const sweepPos = (Math.sin(time * 0.8) + 1) * 0.5 * gridSize;
+        const peakDist = Math.abs(col - sweepPos);
+        const movingPeak = Math.exp(-peakDist * 0.3) * 0.6 * Math.sin(time * 6);
+        
+        // Random flutter
+        const flutter = (Math.random() - 0.5) * 0.1 * Math.sin(time * 15);
+        
+        return wave1 + wave2 + wave3 + bassBoost + sparkle + movingPeak + flutter;
+        
+        try {
+            // Get FFT data (frequency domain analysis)
+            const fftData = mixerObject.analyzer.getValue();
+            
+            // Map column to one of 8 frequency bands
+            const bandIndex = Math.floor((col / gridSize) * 8);
+            const bandsPerFFTBin = Math.floor(fftData.length / 8);
+            
+            // Calculate average amplitude for this frequency band
+            let bandAmplitude = 0;
+            for (let i = 0; i < bandsPerFFTBin; i++) {
+                const fftIndex = bandIndex * bandsPerFFTBin + i;
+                if (fftIndex < fftData.length) {
+                    // Convert dB to linear amplitude
+                    const dbValue = fftData[fftIndex];
+                    const linearValue = Math.pow(10, dbValue / 20);
+                    bandAmplitude += linearValue;
+                }
+            }
+            bandAmplitude /= bandsPerFFTBin;
+            
+            // Normalize and enhance for visualization
+            const normalizedAmplitude = Math.min(1, bandAmplitude * 10);
+            
+            // Convert to -1 to 1 range for wave visualization
+            return normalizedAmplitude * 2 - 1;
+            
+        } catch (error) {
+            // Fallback to animated bars
+            const bandIndex = Math.floor((col / gridSize) * 8);
+            const time = Date.now() * 0.001;
+            const baseAmplitude = 0.3 + 0.2 * Math.sin(time * (2 + bandIndex * 0.5));
+            return baseAmplitude * (Math.random() * 0.4 + 0.6);
+        }
     }
     
     
@@ -2725,7 +2822,61 @@ function setupVirtualKeyboard() {
         }
     });
     
-    console.log('T.E. Grid Synthesis: Virtual keyboard setup complete');
+    // Add Ableton-style computer keyboard mapping
+    const keyToNote = {
+        'a': 'C3',   // Root
+        'w': 'C#3',  // C#
+        's': 'D3',   // D
+        'e': 'D#3',  // D#
+        'd': 'E3',   // E
+        'f': 'F3',   // F
+        't': 'F#3',  // F#
+        'g': 'G3',   // G
+        'y': 'G#3',  // G#
+        'h': 'A3',   // A
+        'u': 'A#3',  // A#
+        'j': 'B3',   // B
+        'k': 'C4'    // Octave C
+    };
+    
+    const activeKeys = new Set();
+    
+    // Computer keyboard events
+    document.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        
+        if (keyToNote[key] && !activeKeys.has(key)) {
+            e.preventDefault();
+            activeKeys.add(key);
+            
+            const note = keyToNote[key];
+            const keyElement = document.querySelector(`.key[data-note="${note}"]`);
+            
+            if (keyElement) {
+                keyElement.classList.add('pressed');
+            }
+            
+            playKey(note);
+        }
+    });
+    
+    document.addEventListener('keyup', (e) => {
+        const key = e.key.toLowerCase();
+        
+        if (keyToNote[key] && activeKeys.has(key)) {
+            e.preventDefault();
+            activeKeys.delete(key);
+            
+            const note = keyToNote[key];
+            const keyElement = document.querySelector(`.key[data-note="${note}"]`);
+            
+            if (keyElement) {
+                keyElement.classList.remove('pressed');
+            }
+        }
+    });
+    
+    console.log('T.E. Grid Synthesis: Virtual keyboard setup complete with Ableton-style mapping');
 }
 
 /**

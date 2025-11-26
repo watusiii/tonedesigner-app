@@ -392,15 +392,11 @@ header h1 {
     padding: 0;
 }
 
-/* Channel strips - first 8 items in grid */
+/* Channel strips - all 8 channel knobs get borders */
 .mixer-module .control-group:nth-child(1),
 .mixer-module .control-group:nth-child(2),
 .mixer-module .control-group:nth-child(3),
-.mixer-module .control-group:nth-child(4) {
-    border-right: var(--border-width-thin) solid var(--color-pure-black);
-    border-bottom: var(--border-width-thin) solid var(--color-pure-black);
-}
-
+.mixer-module .control-group:nth-child(4),
 .mixer-module .control-group:nth-child(5),
 .mixer-module .control-group:nth-child(6),
 .mixer-module .control-group:nth-child(7),
@@ -409,13 +405,13 @@ header h1 {
     border-bottom: var(--border-width-thin) solid var(--color-pure-black);
 }
 
-/* Remove right borders from last column */
+/* Remove right borders from 4th and 8th columns (rightmost in each row) */
 .mixer-module .control-group:nth-child(4),
 .mixer-module .control-group:nth-child(8) {
     border-right: none;
 }
 
-/* Remove bottom borders from second row */
+/* Remove bottom borders from second row (channels 5-8) */
 .mixer-module .control-group:nth-child(5),
 .mixer-module .control-group:nth-child(6),
 .mixer-module .control-group:nth-child(7),
@@ -1422,6 +1418,21 @@ header h1 {
         justify-content: space-between;
     }
 
+    /* Mixer responsive layout - maintain 4x2 grid but scale down */
+    .mixer-module {
+        min-width: 280px;
+    }
+    
+    .mixer-module .mixer-controls {
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+    }
+    
+    /* Visual container spans 3 columns, master stays in last column */
+    .mixer-module .mixer-visual-container {
+        grid-column: 1 / 4;
+    }
+
     .synth-module[data-module-id="envelope-1"] .control-group {
         min-width: 60px;
         flex: 1;
@@ -1470,6 +1481,21 @@ header h1 {
 
     .synth-module[data-module-id="envelope-1"] .control-group {
         min-width: 50px;
+    }
+
+    /* Mixer responsive layout - maintain 4x2 structure on very small screens */
+    .mixer-module {
+        min-width: 260px;
+    }
+    
+    .mixer-module .mixer-controls {
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+    }
+    
+    /* Visual container spans 3 columns, master knob stays in position */
+    .mixer-module .mixer-visual-container {
+        grid-column: 1 / 4;
     }
 }
 
