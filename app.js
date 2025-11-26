@@ -99,6 +99,12 @@ async function setupSynth() {
         reverbModuleInstance = ModuleFactory.create('reverb', reverbNode.id, reverbNode.parameters);
         reverbToneObject = reverbModuleInstance.toneObject;
 
+        // Create EQ8 module instance using new module factory
+        // NOTE: 8-band parametric equalizer with spectrum visualization
+        const eq8Node = { id: 'eq8-1', parameters: {} };
+        eq8ModuleInstance = ModuleFactory.create('eq8', eq8Node.id, eq8Node.parameters);
+        eq8ToneObject = eq8ModuleInstance.toneObject;
+
         // Create mixer module instance using new module factory
         // NOTE: Multi-input mixer with proper architecture
         mixerModuleInstance = ModuleFactory.create('mixer', mixerNode.id, mixerNode.parameters);
@@ -1099,11 +1105,12 @@ let p5Manager;
  * Used by both the audio engine (compilePatching) and visual system (PatchCableManager)
  */
 const currentPatchConnections = [
-    // Audio signal chain: VCO → VCF → ENV → REVERB → MIXER → Destination
+    // Audio signal chain: VCO → VCF → ENV → REVERB → EQ8 → MIXER → Destination
     { source: 'oscillator-1/audio_out', target: 'filter-1/audio_in', type: 'audio' },
     { source: 'filter-1/audio_out', target: 'envelope-1/audio_in', type: 'audio' },
     { source: 'envelope-1/audio_out', target: 'reverb-1/audio_in', type: 'audio' },
-    { source: 'reverb-1/audio_out', target: 'mixer-1/input/1', type: 'audio' },
+    { source: 'reverb-1/audio_out', target: 'eq8-1/audio_in', type: 'audio' },
+    { source: 'eq8-1/audio_out', target: 'mixer-1/input/1', type: 'audio' },
     { source: 'mixer-1/audio_out', target: 'destination', type: 'audio' },
     // CV modulation: LFO → VCF Frequency Parameter
     { source: 'lfo-1/cv_out', target: 'filter-1/frequency', type: 'cv' }
@@ -1165,6 +1172,13 @@ function disconnectAllModules() {
     }
     if (reverbModuleInstance?.toneObject) {
         reverbModuleInstance.toneObject.disconnect();
+    }
+    if (eq8ModuleInstance?.toneObject) {
+        eq8ModuleInstance.toneObject.disconnect();
+        // Also disconnect all EQ band nodes
+        if (eq8ModuleInstance.toneObject.eqBands) {
+            eq8ModuleInstance.toneObject.eqBands.forEach(band => band.disconnect());
+        }
     }
     if (mixerModuleInstance?.toneObject) {
         mixerModuleInstance.toneObject.disconnect();
@@ -1253,6 +1267,14 @@ function applyConnection(connection) {
             });
             sourceObject.connect(mixerObject.inputGains[inputNumber]);
             console.log(`🔌 Connected ${sourceModuleId} to mixer input ${inputNumber + 1}`);
+        } else if (targetModuleId === 'eq8-1') {
+            // Special handling for EQ8 - connect directly to master gain for now
+            const targetObject = getToneObjectById(targetModuleId);
+            if (!targetObject) {
+                throw new Error(`Target module not found: ${targetModuleId}`);
+            }
+            sourceObject.connect(targetObject);
+            console.log(`🔌 Connected ${sourceModuleId} to EQ8 master gain`);
         } else {
             // Standard audio connection
             const targetObject = getToneObjectById(targetModuleId);
@@ -1296,6 +1318,8 @@ function getToneObjectById(moduleId) {
             return lfoToneObject || lfoModuleInstance?.toneObject;
         case 'reverb-1':
             return reverbToneObject || reverbModuleInstance?.toneObject;
+        case 'eq8-1':
+            return eq8ToneObject || eq8ModuleInstance?.toneObject;
         case 'mixer-1':
             return mixerToneObject || mixerModuleInstance?.toneObject;
         default:
@@ -2013,6 +2037,43 @@ function syncToneEngine(node) {
         reverbToneObject.wet.value = node.parameters.wet;
 
         console.log(`  Synced ${node.id} - decay: ${node.parameters.decay}s, wet: ${node.parameters.wet}`);
+    } else if (node.id === "eq8-1") {
+        const eq8Object = getToneObjectById("eq8-1");
+
+        if (!eq8Object) {
+            console.error(`  EQ8 object not found for ${node.id}`);
+            return;
+        }
+
+        // Update Tone.js EQ8 parameters from node data
+        // Note: This is a simplified implementation - proper EQ would need individual band filters
+        console.log('🎛️ EQ8 DEBUG: syncToneEngine called for eq8', {
+            nodeParams: node.parameters,
+            eq8Object: eq8Object
+        });
+
+        // Update master gain
+        if (node.parameters.masterGain !== undefined) {
+            eq8Object.gain.value = Tone.gainToDb(node.parameters.masterGain);
+        }
+
+        // Update individual EQ band gains
+        for (let i = 1; i <= 8; i++) {
+            const bandParam = `band${i}Gain`;
+            if (node.parameters[bandParam] !== undefined && eq8Object.eqBands && eq8Object.eqBands[i-1]) {
+                const gainDb = node.parameters[bandParam];
+                const eqBand = eq8Object.eqBands[i-1];
+                
+                // Update the gain node (convert dB to linear gain)
+                if (eqBand.gain) {
+                    eqBand.gain.value = Tone.dbToGain(gainDb);
+                    eqBand.gainDb = gainDb; // Store for reference
+                    console.log(`  EQ Band ${i} (${eqBand.frequency}Hz): ${gainDb}dB`);
+                }
+            }
+        }
+
+        console.log(`  Synced ${node.id} - masterGain: ${node.parameters.masterGain}`);
     } else if (node.id === "mixer-1") {
         const mixerObject = getToneObjectById("mixer-1");
 
@@ -2071,6 +2132,9 @@ function initializeModules() {
         const lfoHTML = lfoModuleInstance ? lfoModuleInstance.element : renderLFOModule(lfoNode);
         // Use the reverb module created in setupSynth
         const reverbHTML = reverbModuleInstance ? reverbModuleInstance.element : renderReverbModule(reverbNode);
+        // Use the EQ8 module created in setupSynth
+        const eq8HTML = eq8ModuleInstance ? eq8ModuleInstance.element : '<div>EQ8 not found</div>';
+        
         // Use the mixer module created in setupSynth
         const mixerHTML = mixerModuleInstance ? mixerModuleInstance.element : renderMixerModule(mixerNode);
 
@@ -2082,6 +2146,7 @@ function initializeModules() {
                 ${envelopeHTML}
                 ${lfoHTML}
                 ${reverbHTML}
+                ${eq8HTML}
                 ${mixerHTML}
                 <svg id="patch-svg" xmlns="http://www.w3.org/2000/svg">
                     <!-- Patch cables will be drawn here by PatchingController -->
@@ -2243,6 +2308,11 @@ function setupKnobInteraction() {
                 const sensitivity = 0.01;
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param.startsWith('band') && param.endsWith('Gain')) {
+                // EQ8 band gain: -12dB to +12dB (linear scaling)
+                const sensitivity = 0.3;
+                newValue = Math.max(-12, Math.min(12, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             }
 
             // Determine which node to update based on module
@@ -2260,6 +2330,12 @@ function setupKnobInteraction() {
                 targetNode = lfoNode;
             } else if (moduleId === 'reverb-1') {
                 targetNode = reverbNode;
+            } else if (moduleId === 'eq8-1') {
+                // Create eq8Node if it doesn't exist
+                if (!window.eq8Node) {
+                    window.eq8Node = { id: 'eq8-1', parameters: eq8ModuleInstance.node.parameters };
+                }
+                targetNode = window.eq8Node;
             } else if (moduleId === 'mixer-1') {
                 targetNode = mixerNode;
             }
@@ -2396,6 +2472,11 @@ function setupKnobInteraction() {
                 const sensitivity = 0.01;
                 newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+            } else if (param.startsWith('band') && param.endsWith('Gain')) {
+                // EQ8 band gain: -12dB to +12dB (linear scaling)
+                const sensitivity = 0.3;
+                newValue = Math.max(-12, Math.min(12, startValue + (deltaY * sensitivity)));
+                newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             }
 
             // Determine which node to update based on module
@@ -2413,6 +2494,12 @@ function setupKnobInteraction() {
                 targetNode = lfoNode;
             } else if (moduleId === 'reverb-1') {
                 targetNode = reverbNode;
+            } else if (moduleId === 'eq8-1') {
+                // Create eq8Node if it doesn't exist
+                if (!window.eq8Node) {
+                    window.eq8Node = { id: 'eq8-1', parameters: eq8ModuleInstance.node.parameters };
+                }
+                targetNode = window.eq8Node;
             } else if (moduleId === 'mixer-1') {
                 targetNode = mixerNode;
             }
@@ -2572,6 +2659,11 @@ function updateKnobVisuals(knob, param, value) {
             const normalized = value; // Already 0 to 1
             rotation = -135 + (normalized * 270); // -135° to +135°
             displayText = `${Math.round(value * 100)}%`;
+        } else if (param.startsWith('band') && param.endsWith('Gain')) {
+            // Map EQ band gain (-12dB to +12dB) to rotation (-135° to +135°) linear scaling
+            const normalized = (value + 12) / 24; // Convert -12 to +12 to 0 to 1
+            rotation = -135 + (normalized * 270); // -135° to +135°
+            displayText = `${value > 0 ? '+' : ''}${value}dB`;
         }
 
         // Apply rotation to indicator

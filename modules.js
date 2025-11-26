@@ -509,6 +509,113 @@ ModuleFactory.register('reverb', ReverbModule);
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
+ * EQ8 MODULE DEFINITION - 8-BAND EQUALIZER
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * EQ8 Module - 8-band parametric equalizer with spectrum visualization
+ * Ableton-style layout with frequency bands and visual feedback
+ */
+const EQ8Module = {
+    nodeConfig: {
+        type: "EQ8",
+        parameters: {
+            band1Gain: 0,     // 60Hz
+            band2Gain: 0,     // 170Hz  
+            band3Gain: 0,     // 350Hz
+            band4Gain: 0,     // 1kHz
+            band5Gain: 0,     // 2.8kHz
+            band6Gain: 0,     // 7kHz
+            band7Gain: 0,     // 10kHz
+            band8Gain: 0,     // 15kHz
+            masterGain: 1.0
+        }
+    },
+    
+    toneFactory: (params) => {
+        // For now, create a simple pass-through with master gain to ensure audio flows
+        const masterGain = new Tone.Gain(params.masterGain || 1.0);
+        
+        // Create spectrum analyzer for visualization
+        const analyzer = new Tone.FFT(128);
+        masterGain.connect(analyzer);
+        
+        // Store frequencies for UI reference
+        const frequencies = [60, 170, 350, 1000, 2800, 7000, 10000, 15000];
+        
+        // Create placeholder EQ bands (just gain nodes for now)
+        const eqBands = [];
+        for (let i = 0; i < 8; i++) {
+            const bandGain = params[`band${i+1}Gain`] || 0;
+            const gainNode = new Tone.Gain(Tone.dbToGain(bandGain));
+            gainNode.frequency = frequencies[i];
+            gainNode.gainDb = bandGain;
+            eqBands.push(gainNode);
+        }
+        
+        // Attach components to master for easy access
+        masterGain.eqBands = eqBands;
+        masterGain.analyzer = analyzer;
+        masterGain.inputNode = masterGain; // Direct input to master for now
+        
+        console.log('🎛️ EQ8 created as pass-through with master gain');
+        
+        return masterGain;
+    },
+    
+    renderFunction: (eqData) => {
+        // Generate 8 EQ band controls in 4x2 grid
+        let bandControls = '';
+        const frequencies = ['60Hz', '170Hz', '350Hz', '1kHz', '2.8kHz', '7kHz', '10kHz', '15kHz'];
+        
+        for (let i = 1; i <= 8; i++) {
+            bandControls += `
+                <div class="control-group">
+                    <label class="control-label">${frequencies[i-1]}</label>
+                    <div class="synth-knob eq-knob" data-param="band${i}Gain" data-value="${eqData.parameters[`band${i}Gain`]}">
+                        <div class="knob-indicator"></div>
+                    </div>
+                    <span class="control-value">${eqData.parameters[`band${i}Gain`].toFixed(2)}</span>
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="synth-module eq8-module" data-module-id="${eqData.id}">
+                <div class="corner-port-input">
+                    <div class="patch-port audio-input" data-port-type="audio-in" data-signal="audio"></div>
+                    <span class="corner-port-label">IN</span>
+                </div>
+                <div class="corner-port-output">
+                    <div class="patch-port audio-output" data-port-type="audio-out" data-signal="audio"></div>
+                    <span class="corner-port-label">EQ</span>
+                </div>
+                
+                <div class="module-header">
+                    <div class="module-title">EQ8</div>
+                </div>
+                
+                <div class="module-controls eq8-controls">
+                    ${bandControls}
+                    <div class="eq8-visual-container">
+                        <div class="wave-visual eq8-spectrum" id="eq8-visual-${eqData.id}">SPECTRUM</div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">MASTER</label>
+                        <div class="synth-knob eq-knob" data-param="masterGain" data-value="${eqData.parameters.masterGain}">
+                            <div class="knob-indicator"></div>
+                        </div>
+                        <span class="control-value">${eqData.parameters.masterGain.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
  * MIXER MODULE DEFINITION
  * ═══════════════════════════════════════════════════════════════════════════════
  */
@@ -604,6 +711,9 @@ const MixerModule = {
         `;
     }
 };
+
+// Register the EQ8 module
+ModuleFactory.register('eq8', EQ8Module);
 
 // Register the mixer module
 ModuleFactory.register('mixer', MixerModule);
