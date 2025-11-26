@@ -882,21 +882,17 @@ class P5CanvasManager {
      */
     calculateEQ8FrequencyResponse(col, gridSize) {
         const eq8Object = eq8ToneObject || eq8ModuleInstance?.toneObject;
-        
-        console.log('🎛️ EQ8 Visual Debug:', { col, gridSize, eq8Object: !!eq8Object, eq3: !!eq8Object?.eq3 });
-        
+
         if (eq8Object && eq8Object.eq3) {
             // Get current EQ settings
             const lowGain = eq8Object.eq3.low.value || 0;    // dB
             const midGain = eq8Object.eq3.mid.value || 0;    // dB  
             const highGain = eq8Object.eq3.high.value || 0;  // dB
-            
-            console.log('🎛️ EQ3 Values:', { low: lowGain, mid: midGain, high: highGain });
-            
+
             // Map column position to frequency band
             // col 0 = low frequencies, col gridSize-1 = high frequencies
             const freqPosition = col / (gridSize - 1); // 0 to 1
-            
+
             let gainAtFreq = 0;
             if (freqPosition < 0.33) {
                 // Low frequency range (0-33%)
@@ -911,13 +907,14 @@ class P5CanvasManager {
                 const blend = (freqPosition - 0.67) / 0.33;
                 gainAtFreq = midGain * (0.5 * (1 - blend)) + highGain;
             }
-            
-            // Convert dB to visual amplitude (-12dB to +12dB -> -1 to +1)
-            const normalizedGain = Math.max(-1, Math.min(1, gainAtFreq / 12));
-            
+
+            // Convert dB to visual amplitude with more dramatic range (-12dB to +12dB -> -1 to +1)
+            // Scale up the visual response for more dramatic movement
+            const normalizedGain = Math.max(-1, Math.min(1, gainAtFreq)); // Changed from /12 to /6 for double the sensitivity
+
             return normalizedGain;
         }
-        
+
         // Fallback: flat response (0dB = 0 visual offset)
         return 0;
     }
@@ -1723,7 +1720,7 @@ function initializeP5Manager() {
                     frequency: 2.5, // Multiple cycles visible
                     strokeWeight: 1.5,
                     strokeColor: '#000000',
-                    backgroundColor: '#ffffff'
+                    backgroundColor: 'transparent' // Let CSS background show through
                 });
 
                 console.log(`  Created P5 canvas for ${waveType} wave (${visual.id})`);
@@ -2107,7 +2104,7 @@ function syncToneEngine(node) {
         // Recalculate the averaged values for low/mid/high
         const lowGains = [
             node.parameters.band1Gain || 0,
-            node.parameters.band2Gain || 0, 
+            node.parameters.band2Gain || 0,
             node.parameters.band3Gain || 0
         ];
         const midGains = [
@@ -2119,18 +2116,18 @@ function syncToneEngine(node) {
             node.parameters.band7Gain || 0,
             node.parameters.band8Gain || 0
         ];
-        
+
         // Calculate averages
         const lowGain = lowGains.reduce((a, b) => a + b, 0) / lowGains.length;
         const midGain = midGains.reduce((a, b) => a + b, 0) / midGains.length;
         const highGain = highGains.reduce((a, b) => a + b, 0) / highGains.length;
-        
+
         // Update the Tone.EQ3 object
         if (eq8Object.eq3) {
             eq8Object.eq3.low.value = lowGain;
-            eq8Object.eq3.mid.value = midGain; 
+            eq8Object.eq3.mid.value = midGain;
             eq8Object.eq3.high.value = highGain;
-            
+
             console.log(`  EQ3 Updated - Low: ${lowGain.toFixed(1)}dB, Mid: ${midGain.toFixed(1)}dB, High: ${highGain.toFixed(1)}dB`);
         }
 
@@ -2195,7 +2192,7 @@ function initializeModules() {
         const reverbHTML = reverbModuleInstance ? reverbModuleInstance.element : renderReverbModule(reverbNode);
         // Use the EQ8 module created in setupSynth
         const eq8HTML = eq8ModuleInstance ? eq8ModuleInstance.element : '<div>EQ8 not found</div>';
-        
+
         // Use the mixer module created in setupSynth
         const mixerHTML = mixerModuleInstance ? mixerModuleInstance.element : renderMixerModule(mixerNode);
 
