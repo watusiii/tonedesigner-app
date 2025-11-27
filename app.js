@@ -3036,8 +3036,8 @@ function setupVirtualKeyboard() {
  */
 
 /**
- * Generate Production-Ready JavaScript Code
- * Iterates through synthNodes array and outputs clean Tone.js instantiation and connection code
+ * Generate Production-Ready JavaScript Code (DYNAMIC VERSION)
+ * Uses CodeGeneratorFactory and currentPatchConnections for fully dynamic generation
  * Following the structured three-block approach: Instantiation, Patching, Triggering
  * 
  * @returns {string} Clean, copy-pasteable JavaScript code
@@ -3046,113 +3046,97 @@ function generateCode() {
     let code = `await Tone.start();
 
 // ═══════════════════════════════════════════════════════════════
-// INSTANTIATION BLOCK - Module Declarations
+// INSTANTIATION BLOCK - Module Declarations  
 // ═══════════════════════════════════════════════════════════════
 
 `;
 
-    // Generate oscillator declarations
-    synthNodes
-        .filter(node => node.type === "OmniOscillator")
-        .forEach(node => {
+    // DYNAMIC INSTANTIATION - Generate code for all modules in synthNodes using CodeGeneratorFactory
+    synthNodes.forEach(node => {
+        if (window.CodeGeneratorFactory) {
+            code += CodeGeneratorFactory.generateModuleCode(node);
+        } else {
+            // Fallback for when CodeGeneratorFactory isn't loaded yet
+            console.warn('CodeGeneratorFactory not available, using fallback');
             const id = node.id.replace('-', '');
-            code += `const ${id} = new Tone.Oscillator({
-    type: "${node.parameters.waveform}",
-    frequency: ${node.parameters.frequency},
-    detune: ${node.parameters.detune}
-}).start();
+            code += `// ${node.type} module: ${node.id}\n`;
+        }
+    });
 
-`;
-        });
-
-    // Generate filter declarations
-    synthNodes
-        .filter(node => node.type === "Filter")
-        .forEach(node => {
-            const id = node.id.replace('-', '');
-            code += `const ${id} = new Tone.Filter({
-    type: "${node.parameters.type}",
-    frequency: ${node.parameters.frequency},
-    Q: ${node.parameters.Q}
-});
-
-`;
-        });
-
-    // Generate envelope declarations
-    synthNodes
-        .filter(node => node.type === "AmplitudeEnvelope")
-        .forEach(node => {
-            const id = node.id.replace('-', '');
-            code += `const ${id} = new Tone.AmplitudeEnvelope({
-    attack: ${node.parameters.attack},
-    decay: ${node.parameters.decay},
-    sustain: ${node.parameters.sustain},
-    release: ${node.parameters.release}
-});
-
-`;
-        });
-
-    // Generate LFO declarations
-    synthNodes
-        .filter(node => node.type === "LFO")
-        .forEach(node => {
-            const id = node.id.replace('-', '');
-            code += `const ${id} = new Tone.LFO({
-    type: "${node.parameters.type}",
-    frequency: ${node.parameters.frequency},
-    min: ${node.parameters.min},
-    max: ${node.parameters.max}
-}).start();
-
-`;
-        });
-
-    // Generate reverb declarations
-    synthNodes
-        .filter(node => node.type === "Reverb")
-        .forEach(node => {
-            const id = node.id.replace('-', '');
-            code += `const ${id} = new Tone.Reverb({
-    decay: ${node.parameters.decay},
-    wet: ${node.parameters.wet}
-});
-
-`;
-        });
-
+    // DYNAMIC PATCHING - Generate connections from currentPatchConnections
     code += `// ═══════════════════════════════════════════════════════════════
-// PATCHING BLOCK - Signal Routing
+// PATCHING BLOCK - Signal Routing (DYNAMIC)
 // ═══════════════════════════════════════════════════════════════
 
-// Audio Signal Chain: VCO → VCF → ENV → REVERB → Destination
-oscillator1.connect(filter1);
-filter1.connect(envelope1);
-envelope1.connect(reverb1);
-reverb1.toDestination();
+`;
 
-// Modulation Routing: LFO → VCF Frequency
-lfo1.connect(filter1.frequency);
+    if (currentPatchConnections && currentPatchConnections.length > 0) {
+        currentPatchConnections.forEach(connection => {
+            const sourceModule = connection.source.split('/')[0].replace('-', '');
+            
+            if (connection.target === 'destination') {
+                code += `${sourceModule}.toDestination();\n`;
+            } else if (connection.type === 'audio') {
+                const targetModule = connection.target.split('/')[0].replace('-', '');
+                code += `${sourceModule}.connect(${targetModule});\n`;
+            } else if (connection.type === 'cv') {
+                const targetModule = connection.target.split('/')[0].replace('-', '');
+                const param = connection.target.split('/')[1];
+                code += `${sourceModule}.connect(${targetModule}.${param});\n`;
+            }
+        });
+        code += '\n';
+    } else {
+        code += `// No patch connections found\n\n`;
+    }
 
+    // DYNAMIC TRIGGERING - Generate play function based on available modules
+    code += `// ═══════════════════════════════════════════════════════════════
+// TRIGGERING BLOCK - Play Function (DYNAMIC)
 // ═══════════════════════════════════════════════════════════════
-// TRIGGERING BLOCK - Play Function
-// ═══════════════════════════════════════════════════════════════
 
-const playSynth = (note = "C4", duration = "4n") => {
+`;
+
+    // Find the first oscillator and envelope for the play function
+    const oscillatorNode = synthNodes.find(node => node.type === "OmniOscillator");
+    const envelopeNode = synthNodes.find(node => node.type === "AmplitudeEnvelope");
+
+    if (oscillatorNode && envelopeNode) {
+        const oscId = oscillatorNode.id.replace('-', '');
+        const envId = envelopeNode.id.replace('-', '');
+        
+        code += `const playSynth = (note = "C4", duration = "4n") => {
     // Set oscillator frequency to the desired note
-    oscillator1.frequency.setValueAtTime(Tone.Frequency(note).toFrequency(), Tone.now());
+    ${oscId}.frequency.setValueAtTime(Tone.Frequency(note).toFrequency(), Tone.now());
     
     // Trigger the envelope to play the note
-    envelope1.triggerAttackRelease(duration, Tone.now());
+    ${envId}.triggerAttackRelease(duration, Tone.now());
 };
 
 // Example usage:
 // playSynth("C4", "8n");  // Play C4 for an eighth note
 // playSynth("A3", "2n");  // Play A3 for a half note
+`;
+    } else if (oscillatorNode) {
+        const oscId = oscillatorNode.id.replace('-', '');
+        code += `const playSynth = (note = "C4") => {
+    // Set oscillator frequency and play (no envelope found)
+    ${oscId}.frequency.setValueAtTime(Tone.Frequency(note).toFrequency(), Tone.now());
+    // Note: No envelope found for triggering
+};
 
-// Your  Tone Designer is ready!
-console.log("🎛️   Synthesizer loaded and ready");
+// Example usage:
+// playSynth("C4");  // Set frequency to C4
+`;
+    } else {
+        code += `// No oscillator found - cannot generate play function
+// Your patch may be for effects processing or other purposes
+`;
+    }
+
+    code += `
+// Your Tone Designer patch is ready!
+console.log("🎛️ Synthesizer loaded and ready");
 `;
 
     return code;
@@ -3235,6 +3219,7 @@ function exportCode() {
     console.log('='.repeat(80));
     return code;
 }
+
 
 /**
  * Initialize menu toggle functionality

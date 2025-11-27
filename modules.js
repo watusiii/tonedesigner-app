@@ -746,10 +746,173 @@ ModuleFactory.register('mixer', MixerModule);
 
 /**
  * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+ * CODE GENERATOR REGISTRY SYSTEM
+ * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+ */
+
+/**
+ * Central registry for module code generators
+ * Each module type can register a function that generates Tone.js code
+ */
+const CodeGeneratorRegistry = {};
+
+/**
+ * Code Generator Factory - Creates Tone.js code for modules
+ */
+class CodeGeneratorFactory {
+    /**
+     * Register a code generator for a module type
+     * @param {string} type - Module type identifier (matches ModuleRegistry)
+     * @param {Function} generator - Function that takes a node and returns Tone.js code
+     */
+    static register(type, generator) {
+        CodeGeneratorRegistry[type] = generator;
+        console.log(`T.E. Grid: Registered code generator for "${type}"`);
+    }
+    
+    /**
+     * Generate code for a specific module
+     * @param {Object} node - Module node with id, type, parameters
+     * @returns {string} Tone.js instantiation code
+     */
+    static generateModuleCode(node) {
+        const generator = CodeGeneratorRegistry[node.type];
+        if (!generator) {
+            console.warn(`No code generator found for module type: ${node.type}`);
+            return `// Unknown module type: ${node.type}\n`;
+        }
+        return generator(node);
+    }
+    
+    /**
+     * Get list of available code generators
+     * @returns {Array} List of registered generator types
+     */
+    static getAvailableGenerators() {
+        return Object.keys(CodeGeneratorRegistry);
+    }
+}
+
+/**
+ * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+ * MODULE CODE GENERATORS
+ * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+ */
+
+/**
+ * Oscillator Code Generator
+ */
+function generateOscillatorCode(node) {
+    const id = node.id.replace('-', '');
+    return `const ${id} = new Tone.Oscillator({
+    type: "${node.parameters.waveform}",
+    frequency: ${node.parameters.frequency},
+    detune: ${node.parameters.detune}
+}).start();
+
+`;
+}
+
+/**
+ * Filter Code Generator
+ */
+function generateFilterCode(node) {
+    const id = node.id.replace('-', '');
+    return `const ${id} = new Tone.Filter({
+    type: "${node.parameters.type}",
+    frequency: ${node.parameters.frequency},
+    Q: ${node.parameters.Q}
+});
+
+`;
+}
+
+/**
+ * Envelope Code Generator
+ */
+function generateEnvelopeCode(node) {
+    const id = node.id.replace('-', '');
+    return `const ${id} = new Tone.AmplitudeEnvelope({
+    attack: ${node.parameters.attack},
+    decay: ${node.parameters.decay},
+    sustain: ${node.parameters.sustain},
+    release: ${node.parameters.release}
+});
+
+`;
+}
+
+/**
+ * LFO Code Generator
+ */
+function generateLFOCode(node) {
+    const id = node.id.replace('-', '');
+    return `const ${id} = new Tone.LFO({
+    type: "${node.parameters.type}",
+    frequency: ${node.parameters.frequency},
+    min: ${node.parameters.min},
+    max: ${node.parameters.max}
+}).start();
+
+`;
+}
+
+/**
+ * Reverb Code Generator
+ */
+function generateReverbCode(node) {
+    const id = node.id.replace('-', '');
+    return `const ${id} = new Tone.Reverb({
+    decay: ${node.parameters.decay},
+    wet: ${node.parameters.wet}
+});
+
+`;
+}
+
+/**
+ * EQ8 Code Generator
+ */
+function generateEQ8Code(node) {
+    const id = node.id.replace('-', '');
+    return `const ${id} = new Tone.EQ3({
+    low: ${node.parameters.low},
+    mid: ${node.parameters.mid},
+    high: ${node.parameters.high}
+});
+
+`;
+}
+
+/**
+ * Mixer Code Generator
+ */
+function generateMixerCode(node) {
+    const id = node.id.replace('-', '');
+    return `const ${id} = new Tone.Channel({
+    volume: ${node.parameters.volume}
+});
+
+`;
+}
+
+// Register all code generators
+CodeGeneratorFactory.register('OmniOscillator', generateOscillatorCode);
+CodeGeneratorFactory.register('Filter', generateFilterCode);
+CodeGeneratorFactory.register('AmplitudeEnvelope', generateEnvelopeCode);
+CodeGeneratorFactory.register('LFO', generateLFOCode);
+CodeGeneratorFactory.register('Reverb', generateReverbCode);
+CodeGeneratorFactory.register('EQ3', generateEQ8Code);
+CodeGeneratorFactory.register('Channel', generateMixerCode);
+
+/**
+ * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
  * GLOBAL EXPORTS FOR BACKWARD COMPATIBILITY
  * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
  */
 
-// Make the factory available globally
+// Make the factories available globally
 window.ModuleFactory = ModuleFactory;
 window.ModuleRegistry = ModuleRegistry;
+window.CodeGeneratorFactory = CodeGeneratorFactory;
+window.CodeGeneratorRegistry = CodeGeneratorRegistry;
