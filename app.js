@@ -101,7 +101,22 @@ async function setupSynth() {
 
         // Create EQ8 module instance using new module factory
         // NOTE: 8-band parametric equalizer with spectrum visualization
-        const eq8Node = { id: 'eq8-1', parameters: {} };
+        const eq8Node = { 
+            id: 'eq8-1',
+            type: 'EQ8',
+            parameters: {
+                band1Gain: 0,     // 60Hz
+                band2Gain: 0,     // 170Hz  
+                band3Gain: 0,     // 350Hz
+                band4Gain: 0,     // 1kHz
+                band5Gain: 0,     // 2.8kHz
+                band6Gain: 0,     // 7kHz
+                band7Gain: 0,     // 10kHz
+                band8Gain: 0,     // 15kHz
+                masterGain: 1.0
+            }
+        };
+        window.eq8Node = eq8Node; // Make available globally for parameter sync
         eq8ModuleInstance = ModuleFactory.create('eq8', eq8Node.id, eq8Node.parameters);
         eq8ToneObject = eq8ModuleInstance.toneObject;
 
@@ -109,6 +124,15 @@ async function setupSynth() {
         // NOTE: Multi-input mixer with proper architecture
         mixerModuleInstance = ModuleFactory.create('mixer', mixerNode.id, mixerNode.parameters);
         mixerToneObject = mixerModuleInstance.toneObject;
+
+        // Register all original modules for dynamic audio routing
+        registerModuleInstance(oscillatorNode.id, oscillatorModuleInstance);
+        registerModuleInstance(filterNode.id, filterModuleInstance);
+        registerModuleInstance(envelopeNode.id, envelopeModuleInstance);
+        registerModuleInstance(lfoNode.id, lfoModuleInstance);
+        registerModuleInstance(reverbNode.id, reverbModuleInstance);
+        registerModuleInstance(eq8Node.id, eq8ModuleInstance);
+        registerModuleInstance(mixerNode.id, mixerModuleInstance);
 
         // DYNAMIC PATCHING LOGIC - Use the new compilation system
         compilePatching();
@@ -131,9 +155,6 @@ async function setupSynth() {
         // Initialize menu toggle functionality
         initializeMenu();
 
-        // Initialize add module button
-        initializeAddModuleButton();
-
         // Initialize global synth nodes array
         synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode, mixerNode];
 
@@ -147,6 +168,9 @@ async function setupSynth() {
 
         // Initialize modules UI - render both modules side by side
         initializeModules();
+
+        // Initialize add module button (after DOM is ready)
+        initializeAddModuleButton();
 
         // Setup interactive knob functionality (call after DOM is ready)
         setTimeout(() => {
@@ -1344,11 +1368,61 @@ function applyConnection(connection) {
 }
 
 /**
- * Get Tone.js object by module ID
+ * Dynamic Module Instance Storage
+ * Maps module IDs to their ModuleFactory instances
+ */
+const moduleInstances = new Map();
+
+/**
+ * Register a module instance for audio routing
+ * @param {string} moduleId - Module identifier
+ * @param {Object} moduleInstance - ModuleFactory instance with toneObject
+ */
+function registerModuleInstance(moduleId, moduleInstance) {
+    moduleInstances.set(moduleId, moduleInstance);
+    console.log(`🔌 Registered module instance: ${moduleId}`);
+}
+
+/**
+ * Get module node by ID (for parameter updates)
+ * @param {string} moduleId - Module identifier
+ * @returns {Object} Module node or null
+ */
+function getModuleNodeById(moduleId) {
+    // Try to find in synthNodes array first
+    const node = synthNodes.find(node => node.id === moduleId);
+    if (node) {
+        return node;
+    }
+    
+    // Fallback to hardcoded legacy nodes
+    switch (moduleId) {
+        case 'oscillator-1': return oscillatorNode;
+        case 'filter-1': return filterNode;
+        case 'envelope-1': return envelopeNode;
+        case 'lfo-1': return lfoNode;
+        case 'reverb-1': return reverbNode;
+        case 'eq8-1': return window.eq8Node || eq8ModuleInstance?.node;
+        case 'mixer-1': return mixerNode;
+        default:
+            console.warn(`Unknown module node ID: ${moduleId}`);
+            return null;
+    }
+}
+
+/**
+ * Get Tone.js object by module ID (DYNAMIC VERSION)
  * @param {string} moduleId - Module identifier (e.g., 'oscillator-1', 'filter-1')
  * @returns {Object} Tone.js object or null
  */
 function getToneObjectById(moduleId) {
+    // First try dynamic module instances
+    const moduleInstance = moduleInstances.get(moduleId);
+    if (moduleInstance && moduleInstance.toneObject) {
+        return moduleInstance.toneObject;
+    }
+    
+    // Fallback to legacy hardcoded objects for original modules
     switch (moduleId) {
         case 'oscillator-1':
             return vco1ToneObject || oscillatorModuleInstance?.toneObject;
@@ -2033,13 +2107,198 @@ function renderReverbModule(reverbData) {
 }
 
 /**
- * Two-Way Synchronization Bridge
+ * Two-Way Synchronization Bridge (DYNAMIC VERSION)
  * Updates the corresponding Tone.js object based on the synth node data structure
  * This ensures the audio engine always reflects the current parameter state
  * 
  * @param {Object} node - The synth node data structure to sync
  */
 function syncToneEngine(node) {
+    if (!node) {
+        console.warn('syncToneEngine: No node provided');
+        return;
+    }
+
+    // Get the Tone.js object for this module
+    const toneObject = getToneObjectById(node.id);
+    if (!toneObject) {
+        console.warn(`syncToneEngine: No Tone.js object found for ${node.id}`);
+        return;
+    }
+
+    console.log(`🔄 Syncing ${node.id} (${node.type}) with Tone.js object`);
+
+    // Sync parameters based on module type
+    try {
+        switch (node.type) {
+            case 'OmniOscillator':
+                syncOscillatorParameters(node, toneObject);
+                break;
+            case 'Filter':
+                syncFilterParameters(node, toneObject);
+                break;
+            case 'AmplitudeEnvelope':
+                syncEnvelopeParameters(node, toneObject);
+                break;
+            case 'LFO':
+                syncLFOParameters(node, toneObject);
+                break;
+            case 'Reverb':
+                syncReverbParameters(node, toneObject);
+                break;
+            case 'EQ3':
+            case 'EQ8': // Handle both EQ3 and EQ8 types
+                syncEQ8Parameters(node, toneObject);
+                break;
+            case 'Channel':
+            case 'Mixer': // Handle both Channel and Mixer types
+                syncMixerParameters(node, toneObject);
+                break;
+            default:
+                console.warn(`Unknown module type for sync: ${node.type}`);
+        }
+    } catch (error) {
+        console.error(`Error syncing ${node.id}:`, error);
+    }
+}
+
+/**
+ * Sync oscillator parameters
+ */
+function syncOscillatorParameters(node, toneObject) {
+    toneObject.frequency.value = node.parameters.frequency;
+    toneObject.type = node.parameters.waveform;
+    toneObject.detune.value = node.parameters.detune;
+    console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.waveform}, detune: ${node.parameters.detune}`);
+}
+
+/**
+ * Sync filter parameters
+ */
+function syncFilterParameters(node, toneObject) {
+    toneObject.frequency.value = node.parameters.frequency;
+    toneObject.type = node.parameters.type;
+    toneObject.Q.value = node.parameters.Q;
+    console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.type}, Q: ${node.parameters.Q}`);
+}
+
+/**
+ * Sync envelope parameters
+ */
+function syncEnvelopeParameters(node, toneObject) {
+    toneObject.attack = node.parameters.attack;
+    toneObject.decay = node.parameters.decay;
+    toneObject.sustain = node.parameters.sustain;
+    toneObject.release = node.parameters.release;
+    console.log(`  Synced ${node.id} - ADSR: ${node.parameters.attack}/${node.parameters.decay}/${node.parameters.sustain}/${node.parameters.release}`);
+}
+
+/**
+ * Sync LFO parameters
+ */
+function syncLFOParameters(node, toneObject) {
+    const multiplier = parseFloat(node.parameters.multiplier) || 1;
+    const effectiveFreq = node.parameters.frequency * multiplier;
+    
+    toneObject.frequency.value = effectiveFreq;
+    toneObject.type = node.parameters.type;
+    toneObject.min = node.parameters.min;
+    toneObject.max = node.parameters.max;
+    console.log(`  Synced ${node.id} - freq: ${effectiveFreq}Hz, type: ${node.parameters.type}, range: ${node.parameters.min}-${node.parameters.max}Hz`);
+}
+
+/**
+ * Sync reverb parameters
+ */
+function syncReverbParameters(node, toneObject) {
+    toneObject.decay = node.parameters.decay;
+    toneObject.wet.value = node.parameters.wet;
+    console.log(`  Synced ${node.id} - decay: ${node.parameters.decay}s, wet: ${node.parameters.wet}`);
+}
+
+/**
+ * Sync EQ8 parameters
+ */
+function syncEQ8Parameters(node, toneObject) {
+    // Handle the complex EQ8 structure - map 8 bands to 3 EQ3 bands
+    const band1Gain = node.parameters.band1Gain || 0;
+    const band2Gain = node.parameters.band2Gain || 0;
+    const band3Gain = node.parameters.band3Gain || 0;
+    const band4Gain = node.parameters.band4Gain || 0;
+    const band5Gain = node.parameters.band5Gain || 0;
+    const band6Gain = node.parameters.band6Gain || 0;
+    const band7Gain = node.parameters.band7Gain || 0;
+    const band8Gain = node.parameters.band8Gain || 0;
+    
+    // Map 8 bands to 3 EQ3 bands: Low (bands 1-3), Mid (bands 4-5), High (bands 6-8)
+    const lowGains = [band1Gain, band2Gain, band3Gain];
+    const midGains = [band4Gain, band5Gain];
+    const highGains = [band6Gain, band7Gain, band8Gain];
+    
+    // Average the band gains for each EQ3 section
+    const lowGain = lowGains.reduce((a, b) => a + b, 0) / lowGains.length;
+    const midGain = midGains.reduce((a, b) => a + b, 0) / midGains.length;
+    const highGain = highGains.reduce((a, b) => a + b, 0) / highGains.length;
+    
+    console.log(`🔧 EQ8 DEBUG: toneObject structure:`, {
+        hasEq3: !!toneObject.eq3,
+        hasGain: !!toneObject.gain,
+        toneObjectKeys: Object.keys(toneObject),
+        eq3Keys: toneObject.eq3 ? Object.keys(toneObject.eq3) : 'no eq3',
+        toneObjectType: toneObject.constructor.name,
+        eq8ModuleInstanceExists: !!eq8ModuleInstance,
+        eq8ToneObjectExists: !!eq8ToneObject
+    });
+    
+    if (toneObject.eq3) {
+        toneObject.eq3.low.value = lowGain;
+        toneObject.eq3.mid.value = midGain;
+        toneObject.eq3.high.value = highGain;
+        
+        console.log(`✅ Synced ${node.id} EQ bands:`, {
+            'Low (1-3)': lowGain.toFixed(1) + 'dB',
+            'Mid (4-5)': midGain.toFixed(1) + 'dB', 
+            'High (6-8)': highGain.toFixed(1) + 'dB'
+        });
+    } else {
+        console.error(`❌ EQ8 missing eq3 property! ToneObject:`, toneObject);
+        console.error(`❌ Available properties:`, Object.getOwnPropertyNames(toneObject));
+    }
+    
+    // Update master gain if present
+    if (node.parameters.masterGain !== undefined && toneObject.gain) {
+        toneObject.gain.value = Tone.gainToDb(node.parameters.masterGain);
+        console.log(`  Synced ${node.id} master gain: ${node.parameters.masterGain} (${toneObject.gain.value.toFixed(1)}dB)`);
+    }
+}
+
+/**
+ * Sync mixer parameters
+ */
+function syncMixerParameters(node, toneObject) {
+    if (toneObject.inputGains) {
+        // Multi-input mixer
+        Object.keys(node.parameters).forEach(key => {
+            if (key.startsWith('channel') && key.endsWith('Gain')) {
+                const channelNumber = parseInt(key.replace('channel', '').replace('Gain', '')) - 1;
+                if (toneObject.inputGains[channelNumber]) {
+                    toneObject.inputGains[channelNumber].gain.value = node.parameters[key];
+                }
+            }
+        });
+        
+        if (node.parameters.masterGain !== undefined) {
+            toneObject.volume.value = Tone.gainToDb(node.parameters.masterGain);
+        }
+    }
+    console.log(`  Synced ${node.id} - mixer parameters`);
+}
+
+/**
+ * LEGACY SYNC FUNCTION (for backward compatibility)
+ * This is the original hardcoded version, kept for reference
+ */
+function syncToneEngineLegacy(node) {
     if (node.id === "oscillator-1" && vco1ToneObject) {
         // Update Tone.js oscillator parameters from node data
         vco1ToneObject.frequency.value = node.parameters.frequency;
@@ -2373,30 +2632,10 @@ function setupKnobInteraction() {
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             }
 
-            // Determine which node to update based on module
+            // Determine which node to update based on module (DYNAMIC VERSION)
             const moduleElement = knob.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
-            let targetNode;
-
-            if (moduleId === 'oscillator-1') {
-                targetNode = oscillatorNode;
-            } else if (moduleId === 'filter-1') {
-                targetNode = filterNode;
-            } else if (moduleId === 'envelope-1') {
-                targetNode = envelopeNode;
-            } else if (moduleId === 'lfo-1') {
-                targetNode = lfoNode;
-            } else if (moduleId === 'reverb-1') {
-                targetNode = reverbNode;
-            } else if (moduleId === 'eq8-1') {
-                // Create eq8Node if it doesn't exist
-                if (!window.eq8Node) {
-                    window.eq8Node = { id: 'eq8-1', parameters: eq8ModuleInstance.node.parameters };
-                }
-                targetNode = window.eq8Node;
-            } else if (moduleId === 'mixer-1') {
-                targetNode = mixerNode;
-            }
+            const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode) {
                 console.log(`🎛️ KNOB DEBUG: ${param} changed`, {
@@ -2537,30 +2776,10 @@ function setupKnobInteraction() {
                 newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
             }
 
-            // Determine which node to update based on module
+            // Determine which node to update based on module (DYNAMIC VERSION)
             const moduleElement = knob.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
-            let targetNode;
-
-            if (moduleId === 'oscillator-1') {
-                targetNode = oscillatorNode;
-            } else if (moduleId === 'filter-1') {
-                targetNode = filterNode;
-            } else if (moduleId === 'envelope-1') {
-                targetNode = envelopeNode;
-            } else if (moduleId === 'lfo-1') {
-                targetNode = lfoNode;
-            } else if (moduleId === 'reverb-1') {
-                targetNode = reverbNode;
-            } else if (moduleId === 'eq8-1') {
-                // Create eq8Node if it doesn't exist
-                if (!window.eq8Node) {
-                    window.eq8Node = { id: 'eq8-1', parameters: eq8ModuleInstance.node.parameters };
-                }
-                targetNode = window.eq8Node;
-            } else if (moduleId === 'mixer-1') {
-                targetNode = mixerNode;
-            }
+            const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode) {
                 console.log(`🎛️ KNOB DEBUG: ${param} changed`, {
@@ -2747,13 +2966,7 @@ function setupSelectorInteraction() {
             // Determine which node to update based on module
             const moduleElement = selector.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
-            let targetNode;
-
-            if (moduleId === 'oscillator-1') {
-                targetNode = oscillatorNode;
-            } else if (moduleId === 'lfo-1') {
-                targetNode = lfoNode;
-            }
+            const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode && param) {
                 // Update data structure
@@ -2794,11 +3007,7 @@ function setupSelectorInteraction() {
             // Determine which node to update based on module
             const moduleElement = selector.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
-            let targetNode;
-
-            if (moduleId === 'filter-1') {
-                targetNode = filterNode;
-            }
+            const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode && param) {
                 // Update data structure
@@ -2825,11 +3034,7 @@ function setupSelectorInteraction() {
             // Determine which node to update based on module
             const moduleElement = selector.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
-            let targetNode;
-
-            if (moduleId === 'lfo-1') {
-                targetNode = lfoNode;
-            }
+            const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode && param) {
                 // Update data structure
@@ -2877,11 +3082,7 @@ function setupMultiplierInteraction() {
             // Determine which node to update based on module
             const moduleElement = option.closest('.synth-module');
             const moduleId = moduleElement.dataset.moduleId;
-            let targetNode;
-
-            if (moduleId === 'lfo-1') {
-                targetNode = lfoNode;
-            }
+            const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode && param) {
                 // Update data structure
@@ -3261,15 +3462,392 @@ function initializeMenu() {
  */
 function initializeAddModuleButton() {
     const addButton = document.getElementById('add-module-button');
+    
+    console.log('🔍 Looking for add-module-button...', addButton);
 
     if (addButton) {
-        addButton.addEventListener('click', () => {
-            console.log('➕ Add module button clicked - ready for module selection');
-            // TODO: Implement module selection functionality
-        });
-
-        console.log('➕ Add module button initialized');
+        addButton.addEventListener('click', showModuleSelectionMenu);
+        console.log('➕ Add module button initialized and event listener attached');
+    } else {
+        console.error('❌ Add module button not found in DOM');
     }
+}
+
+/**
+ * Show module selection menu when + button is clicked
+ */
+function showModuleSelectionMenu() {
+    console.log('➕ Add module button clicked - showing module selection');
+    
+    // Remove any existing module selection menu
+    const existingMenu = document.getElementById('module-selection-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+
+    // Get available module types from ModuleFactory
+    const availableTypes = ModuleFactory.getAvailableTypes();
+    
+    // Create module selection dropdown
+    const menu = document.createElement('div');
+    menu.id = 'module-selection-menu';
+    menu.className = 'module-selection-menu';
+    
+    // Add title
+    const title = document.createElement('div');
+    title.className = 'module-selection-title';
+    title.textContent = 'ADD MODULE';
+    menu.appendChild(title);
+    
+    // Add module type options
+    availableTypes.forEach(moduleType => {
+        const option = document.createElement('div');
+        option.className = 'module-selection-option';
+        option.textContent = getModuleDisplayName(moduleType);
+        option.addEventListener('click', () => {
+            addNewModule(moduleType);
+            menu.remove();
+        });
+        menu.appendChild(option);
+    });
+    
+    // Add cancel option
+    const cancelOption = document.createElement('div');
+    cancelOption.className = 'module-selection-option cancel-option';
+    cancelOption.textContent = 'CANCEL';
+    cancelOption.addEventListener('click', () => {
+        menu.remove();
+    });
+    menu.appendChild(cancelOption);
+    
+    // Position menu near the + button
+    const addButton = document.getElementById('add-module-button');
+    const buttonRect = addButton.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.left = `${buttonRect.left}px`;
+    menu.style.top = `${buttonRect.top - 200}px`; // Above the button
+    
+    // Add menu to body
+    document.body.appendChild(menu);
+    
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenuOnOutsideClick(e) {
+            if (!menu.contains(e.target) && e.target !== addButton) {
+                menu.remove();
+                document.removeEventListener('click', closeMenuOnOutsideClick);
+            }
+        });
+    }, 0);
+}
+
+/**
+ * Get display name for module type
+ */
+function getModuleDisplayName(moduleType) {
+    const displayNames = {
+        'oscillator': 'VCO (OSCILLATOR)',
+        'filter': 'VCF (FILTER)', 
+        'envelope': 'ENV (ENVELOPE)',
+        'lfo': 'LFO (MODULATOR)',
+        'reverb': 'REVERB',
+        'eq8': 'EQ8 (EQUALIZER)',
+        'mixer': 'MIXER'
+    };
+    return displayNames[moduleType] || moduleType.toUpperCase();
+}
+
+/**
+ * Add a new module of the specified type
+ */
+function addNewModule(moduleType) {
+    console.log(`➕ Adding new ${moduleType} module`);
+    
+    try {
+        // Generate unique ID for the new module
+        const newId = generateUniqueModuleId(moduleType);
+        
+        // Create module instance using ModuleFactory
+        const moduleInstance = ModuleFactory.create(moduleType, newId);
+        
+        // Register module instance for audio routing
+        registerModuleInstance(newId, moduleInstance);
+        
+        // Add to global synthNodes array
+        synthNodes.push(moduleInstance.node);
+        
+        // Add module to visual layout
+        addModuleToGrid(moduleInstance);
+        
+        // Initialize event listeners for the new module
+        initializeNewModuleListeners(moduleInstance);
+        
+        // Start oscillators and LFOs immediately (like original modules)
+        if (moduleType === 'oscillator' && moduleInstance.toneObject) {
+            moduleInstance.toneObject.start();
+            console.log(`🎵 Started ${newId} oscillator`);
+        } else if (moduleType === 'lfo' && moduleInstance.toneObject) {
+            moduleInstance.toneObject.start();
+            console.log(`🎵 Started ${newId} LFO`);
+        }
+        
+        // Update code display
+        updateCodeDisplay();
+        
+        console.log(`✅ Successfully added ${moduleType} module: ${newId}`);
+        
+    } catch (error) {
+        console.error(`❌ Failed to add ${moduleType} module:`, error);
+        alert(`Failed to add ${moduleType} module. Check console for details.`);
+    }
+}
+
+/**
+ * Generate unique ID for new module
+ */
+function generateUniqueModuleId(moduleType) {
+    const existingIds = synthNodes
+        .filter(node => node.id.startsWith(moduleType))
+        .map(node => {
+            const match = node.id.match(/-(\d+)$/);
+            return match ? parseInt(match[1]) : 1;
+        });
+    
+    const nextNumber = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+    return `${moduleType}-${nextNumber}`;
+}
+
+/**
+ * Add module to visual grid layout
+ */
+function addModuleToGrid(moduleInstance) {
+    const appContainer = document.getElementById('app-container');
+    const moduleHTML = moduleInstance.element;
+    
+    // Find the modules container (before the SVG and + button)
+    const modulesContainer = appContainer.querySelector('.modules-container');
+    if (modulesContainer) {
+        // Insert before the SVG element
+        const svg = modulesContainer.querySelector('#patch-svg');
+        if (svg) {
+            svg.insertAdjacentHTML('beforebegin', moduleHTML);
+        } else {
+            modulesContainer.insertAdjacentHTML('beforeend', moduleHTML);
+        }
+    } else {
+        // Fallback: add to app container
+        appContainer.insertAdjacentHTML('beforeend', moduleHTML);
+    }
+}
+
+/**
+ * Initialize event listeners for newly added module
+ */
+function initializeNewModuleListeners(moduleInstance) {
+    console.log(`🔧 DEBUG: Initializing listeners for ${moduleInstance.node.id}`);
+    
+    // Wait a moment for DOM to be ready
+    setTimeout(() => {
+        // Initialize knobs for the new module
+        const moduleElement = document.querySelector(`[data-module-id="${moduleInstance.node.id}"]`);
+        console.log(`🔧 DEBUG: Found module element:`, moduleElement);
+        
+        if (moduleElement) {
+            const newKnobs = moduleElement.querySelectorAll('.synth-knob');
+            console.log(`🎛️ Initializing ${newKnobs.length} knobs for ${moduleInstance.node.id}`, newKnobs);
+            
+            newKnobs.forEach((knob, index) => {
+                console.log(`🎛️ Setting up knob ${index}:`, knob.dataset.param);
+                setupSingleKnobInteraction(knob);
+            });
+            
+            // Initialize selectors (waveform/type dropdowns)
+            const newSelectors = moduleElement.querySelectorAll('.waveform-selector, .filter-type-selector');
+            console.log(`🎛️ Found ${newSelectors.length} selectors`);
+            newSelectors.forEach(selector => {
+                setupSingleSelectorInteraction(selector);
+            });
+            
+            // Initialize P5 visuals for the new module
+            const visualElements = moduleElement.querySelectorAll('.wave-visual');
+            console.log(`📊 Found ${visualElements.length} visual elements`, visualElements);
+            initializeP5VisualsForModule(moduleInstance.node.id, moduleInstance.node.type);
+        } else {
+            console.error(`❌ Could not find module element for ${moduleInstance.node.id}`);
+        }
+    }, 100); // Give DOM time to update
+    
+    // Initialize patching controller for new ports
+    if (window.patchingController) {
+        window.patchingController.initializeListeners();
+    }
+    
+    // Sync with Tone.js engine
+    syncToneEngine(moduleInstance.node);
+}
+
+/**
+ * Setup knob interaction for a single knob element (SELF-CONTAINED VERSION)
+ */
+function setupSingleKnobInteraction(knob) {
+    let isDragging = false;
+    let startY = 0;
+    let startValue = 0;
+    const param = knob.dataset.param;
+
+    console.log(`🎛️ Setting up knob for ${param} with value ${knob.dataset.value}`);
+
+    const handleMouseDown = (e) => {
+        console.log(`🎛️ Knob mousedown: ${param}`);
+        isDragging = true;
+        startY = e.clientY;
+        startValue = parseFloat(knob.dataset.value) || 0;
+        e.preventDefault();
+        knob.style.cursor = 'grabbing';
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging || !param) return;
+        
+        console.log(`🎛️ Knob dragging: ${param}`);
+        
+        // Calculate value change based on vertical movement
+        const deltaY = startY - e.clientY; // Inverted: up = increase
+        let newValue = startValue;
+
+        // Use the same parameter scaling logic as the original knobs
+        if (param === 'frequency') {
+            const moduleElement = knob.closest('.synth-module');
+            const moduleId = moduleElement?.dataset.moduleId;
+            
+            if (moduleId?.includes('lfo')) {
+                // LFO frequency: 0.1Hz to 20Hz logarithmic
+                const sensitivity = 1.5;
+                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                newValue = Math.max(0.1, Math.min(20, startValue * multiplier));
+                newValue = Math.round(newValue * 10) / 10;
+            } else {
+                // Oscillator frequency: 80Hz to 8000Hz logarithmic
+                const sensitivity = 2;
+                const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+                newValue = Math.max(80, Math.min(8000, startValue * multiplier));
+                newValue = Math.round(newValue);
+            }
+        } else if (param === 'detune') {
+            // Detune: -1200¢ to +1200¢ linear
+            const sensitivity = 20;
+            newValue = Math.max(-1200, Math.min(1200, startValue + (deltaY * sensitivity)));
+            newValue = Math.round(newValue);
+        }
+        
+        // Update the module data and UI
+        updateKnobParameter(knob, param, newValue);
+        
+        e.preventDefault();
+    };
+
+    const handleMouseUp = () => {
+        if (isDragging) {
+            console.log(`🎛️ Knob drag ended: ${param}`);
+            isDragging = false;
+            knob.style.cursor = '';
+        }
+    };
+
+    // Attach event listeners
+    knob.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // Touch events
+    knob.addEventListener('touchstart', (e) => {
+        handleMouseDown({ clientY: e.touches[0].clientY, preventDefault: () => e.preventDefault() });
+    });
+    
+    document.addEventListener('touchmove', (e) => {
+        if (isDragging) {
+            handleMouseMove({ clientY: e.touches[0].clientY, preventDefault: () => e.preventDefault() });
+        }
+    });
+    
+    document.addEventListener('touchend', handleMouseUp);
+}
+
+/**
+ * Update knob parameter value and sync with audio engine
+ */
+function updateKnobParameter(knob, param, newValue) {
+    const moduleElement = knob.closest('.synth-module');
+    const moduleId = moduleElement?.dataset.moduleId;
+    
+    if (!moduleId) return;
+    
+    // Find the target node dynamically
+    const targetNode = getModuleNodeById(moduleId);
+    
+    if (targetNode) {
+        console.log(`🎛️ KNOB UPDATE: ${moduleId}/${param} = ${newValue}`);
+        
+        // Update data structure
+        targetNode.parameters[param] = newValue;
+        
+        // Update knob data attribute and visuals
+        knob.dataset.value = newValue;
+        updateKnobVisuals(knob, param, newValue);
+        
+        // Sync with Tone.js
+        syncToneEngine(targetNode);
+        
+        // Update code display
+        updateCodeDisplay();
+    } else {
+        console.warn(`Could not find node for ${moduleId}`);
+    }
+}
+
+/**
+ * Setup selector interaction for a single selector element
+ */
+function setupSingleSelectorInteraction(selector) {
+    // The selector change listeners are already on document,
+    // so they'll work for new selectors automatically
+    console.log(`🎛️ Selector ready for ${selector.dataset.param}`);
+}
+
+/**
+ * Initialize P5 visuals for a specific module
+ */
+function initializeP5VisualsForModule(moduleId, moduleType) {
+    const manager = window.p5Manager || p5Manager;
+    if (!manager) {
+        console.log('📊 P5 Manager not available yet, will retry in 1 second');
+        // Retry after P5 manager loads
+        setTimeout(() => {
+            initializeP5VisualsForModule(moduleId, moduleType);
+        }, 1000);
+        return;
+    }
+
+    console.log(`📊 Initializing P5 visuals for ${moduleId} (${moduleType})`);
+    
+    // Find visual elements in the new module
+    const moduleElement = document.querySelector(`[data-module-id="${moduleId}"]`);
+    if (!moduleElement) return;
+    
+    const visualElements = moduleElement.querySelectorAll('.wave-visual');
+    visualElements.forEach(visual => {
+        if (!visual.id) {
+            // Generate unique ID for the visual element
+            const visualType = visual.dataset.waveType || moduleType.toLowerCase();
+            visual.id = `${moduleId}-${visualType}-visual`;
+            console.log(`📊 Created P5 visual: ${visual.id}`);
+            
+            // Initialize P5 canvas for this element
+            if (manager.createWaveCanvas) {
+                manager.createWaveCanvas(visual.id, visualType);
+            }
+        }
+    });
 }
 
 // Initialize the platform when the page loads

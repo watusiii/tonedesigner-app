@@ -904,6 +904,7 @@ CodeGeneratorFactory.register('LFO', generateLFOCode);
 CodeGeneratorFactory.register('Reverb', generateReverbCode);
 CodeGeneratorFactory.register('EQ3', generateEQ8Code);
 CodeGeneratorFactory.register('Channel', generateMixerCode);
+CodeGeneratorFactory.register('Mixer', generateMixerCode); // Add missing Mixer type
 
 /**
  * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
