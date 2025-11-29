@@ -2956,113 +2956,55 @@ function updateKnobVisuals(knob, param, value) {
  * Handles change events for dropdown selectors (waveform, filter type, etc.)
  */
 function setupSelectorInteraction() {
-    // Waveform selector (includes both oscillator and LFO selectors)
-    const waveformSelectors = document.querySelectorAll('.waveform-selector, .lfo-type-selector');
-    waveformSelectors.forEach(selector => {
-        selector.addEventListener('change', (e) => {
+    // Use event delegation for all selectors - works for dynamically added modules
+    document.addEventListener('change', (e) => {
+        const selector = e.target;
+        
+        // Handle waveform selectors (oscillator and LFO)
+        if (selector.matches('.waveform-selector, .lfo-type-selector')) {
             const param = selector.dataset.param;
-            const newValue = e.target.value;
+            const newValue = selector.value;
 
-            // Determine which node to update based on module
             const moduleElement = selector.closest('.synth-module');
-            const moduleId = moduleElement.dataset.moduleId;
+            const moduleId = moduleElement?.dataset.moduleId;
             const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode && param) {
-                // Update data structure
                 targetNode.parameters[param] = newValue;
-
-                // Sync with Tone.js
                 syncToneEngine(targetNode);
 
-                // Update P5 wave visual if it exists (for both waveform and type parameters)
+                // Update P5 wave visual if it exists
                 if (p5Manager && (param === 'waveform' || param === 'type')) {
                     const waveVisual = moduleElement.querySelector('.wave-visual');
                     if (waveVisual && waveVisual.id) {
-                        // Update wave visual data attribute
                         waveVisual.dataset.waveType = newValue;
-
-                        // Update P5 canvas wave type
                         p5Manager.updateWaveType(waveVisual.id, newValue);
-
                         console.log(`  Updated P5 wave visual to ${newValue} (param: ${param})`);
                     }
                 }
 
-                // Update code display in real-time
                 updateCodeDisplay();
-
-                console.log(`  Updated ${moduleId} ${param} to ${newValue}`);
+                console.log(`🎛️ ${moduleId} ${param} changed to ${newValue}`);
             }
-        });
-    });
+        }
 
-    // Filter type selector
-    const filterTypeSelectors = document.querySelectorAll('.filter-type-selector');
-    filterTypeSelectors.forEach(selector => {
-        selector.addEventListener('change', (e) => {
+        // Handle filter type selectors
+        else if (selector.matches('.filter-type-selector')) {
             const param = selector.dataset.param;
-            const newValue = e.target.value;
+            const newValue = selector.value;
 
-            // Determine which node to update based on module
             const moduleElement = selector.closest('.synth-module');
-            const moduleId = moduleElement.dataset.moduleId;
+            const moduleId = moduleElement?.dataset.moduleId;
             const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode && param) {
-                // Update data structure
                 targetNode.parameters[param] = newValue;
-
-                // Sync with Tone.js
                 syncToneEngine(targetNode);
-
-                // Update code display in real-time
                 updateCodeDisplay();
 
-                console.log(`  Updated ${moduleId} ${param} to ${newValue}`);
+                console.log(`🎛️ ${moduleId} ${param} changed to ${newValue}`);
             }
-        });
-    });
-
-    // LFO type selector
-    const lfoTypeSelectors = document.querySelectorAll('.lfo-type-selector');
-    lfoTypeSelectors.forEach(selector => {
-        selector.addEventListener('change', (e) => {
-            const param = selector.dataset.param;
-            const newValue = e.target.value;
-
-            // Determine which node to update based on module
-            const moduleElement = selector.closest('.synth-module');
-            const moduleId = moduleElement.dataset.moduleId;
-            const targetNode = getModuleNodeById(moduleId);
-
-            if (targetNode && param) {
-                // Update data structure
-                targetNode.parameters[param] = newValue;
-
-                // Sync with Tone.js
-                syncToneEngine(targetNode);
-
-                // Update P5 wave visual if it exists (for LFO type changes)
-                if (p5Manager && param === 'type') {
-                    const waveVisual = moduleElement.querySelector('.wave-visual');
-                    if (waveVisual && waveVisual.id) {
-                        // Update wave visual data attribute
-                        waveVisual.dataset.waveType = newValue;
-
-                        // Update P5 canvas wave type
-                        p5Manager.updateWaveType(waveVisual.id, newValue);
-
-                        console.log(`  Updated LFO P5 wave visual to ${newValue}`);
-                    }
-                }
-
-                // Update code display in real-time
-                updateCodeDisplay();
-
-                console.log(`  Updated ${moduleId} ${param} to ${newValue}`);
-            }
-        });
+        }
     });
 }
 
@@ -3071,36 +3013,31 @@ function setupSelectorInteraction() {
  * Adds event listeners for LFO multiplier selector
  */
 function setupMultiplierInteraction() {
-    // LFO multiplier selector
-    const multiplierOptions = document.querySelectorAll('.multiplier-option');
-    multiplierOptions.forEach(option => {
-        option.addEventListener('click', (e) => {
+    // Use event delegation for multiplier options - works for dynamically added modules  
+    document.addEventListener('click', (e) => {
+        const option = e.target;
+        
+        if (option.matches('.multiplier-option')) {
             const selector = option.closest('.multiplier-selector');
-            const param = selector.dataset.param;
+            const param = selector?.dataset.param;
             const newValue = parseInt(option.dataset.value);
 
-            // Determine which node to update based on module
             const moduleElement = option.closest('.synth-module');
-            const moduleId = moduleElement.dataset.moduleId;
+            const moduleId = moduleElement?.dataset.moduleId;
             const targetNode = getModuleNodeById(moduleId);
 
             if (targetNode && param) {
-                // Update data structure
                 targetNode.parameters[param] = newValue;
-
-                // Sync with Tone.js (this will apply the multiplier to the actual LFO frequency)
                 syncToneEngine(targetNode);
 
                 // Update visual active state
                 selector.querySelectorAll('.multiplier-option').forEach(opt => opt.classList.remove('active'));
                 option.classList.add('active');
 
-                // Update code display in real-time
                 updateCodeDisplay();
-
-                console.log(`  Updated ${moduleId} ${param} to ${newValue}X`);
+                console.log(`🎛️ ${moduleId} ${param} changed to ${newValue}X`);
             }
-        });
+        }
     });
 }
 
