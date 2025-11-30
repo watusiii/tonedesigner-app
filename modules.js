@@ -262,7 +262,8 @@ const EnvelopeModule = {
             attack: 0.1,
             decay: 0.2,
             sustain: 0.5,
-            release: 1.0
+            release: 1.0,
+            noteMode: true  // true = musical notes, false = gate only
         }
     },
     
@@ -295,6 +296,9 @@ const EnvelopeModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">ENV/VCA-1</h3>
+                    <button class="env-mode-toggle" data-param="noteMode" data-value="${envelopeData.parameters.noteMode}">
+                        ${envelopeData.parameters.noteMode ? 'NOTE' : 'GATE'}
+                    </button>
                 </div>
                 
                 <div class="module-controls envelope-controls">

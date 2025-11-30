@@ -315,7 +315,8 @@ window.envelopeNode = {
         attack: 0.1,
         decay: 0.2,
         sustain: 0.5,
-        release: 1.0
+        release: 1.0,
+        noteMode: true  // true = musical notes, false = gate only
     }
 };
 
@@ -2000,6 +2001,9 @@ function renderEnvelopeModule(envelopeData) {
             
             <div class="module-header">
                 <h3 class="module-title">ENV/VCA-1</h3>
+                <button class="env-mode-toggle" data-param="noteMode" data-value="${envelopeData.parameters.noteMode}">
+                    ${envelopeData.parameters.noteMode ? 'NOTE' : 'GATE'}
+                </button>
             </div>
             
             <div class="module-controls envelope-controls">
@@ -2575,7 +2579,43 @@ function initializeModules() {
         document.body.appendChild(keyboardContainer);
 
         console.log('  All modules initialized');
+        
+        // Setup envelope toggle buttons for original envelope
+        setupEnvelopeToggles();
     }
+}
+
+/**
+ * Setup envelope toggle button click handlers
+ */
+function setupEnvelopeToggles() {
+    document.querySelectorAll('.env-mode-toggle').forEach(toggleBtn => {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const container = toggleBtn.closest('.synth-module');
+            if (!container) {
+                console.error('Could not find module container for envelope toggle');
+                return;
+            }
+            const containerId = container.dataset.moduleId;
+            
+            // Get the module node (same approach as dynamic module handler)
+            const targetNode = getModuleNodeById(containerId);
+            
+            if (targetNode) {
+                // Toggle noteMode parameter
+                targetNode.parameters.noteMode = !targetNode.parameters.noteMode;
+                
+                // Update button text and dataset
+                toggleBtn.textContent = targetNode.parameters.noteMode ? 'NOTE' : 'GATE';
+                toggleBtn.dataset.value = targetNode.parameters.noteMode;
+                
+                console.log(`Envelope ${containerId} mode changed to: ${targetNode.parameters.noteMode ? 'NOTE' : 'GATE'}`);
+            } else {
+                console.error(`Could not find module node for ${containerId}`);
+            }
+        });
+    });
 }
 
 /**
@@ -3179,16 +3219,33 @@ function playKey(note) {
         // Apply the note ratio to the base frequency from the knob
         const finalFrequency = baseFrequency * ratio;
 
-        // Set the oscillator frequency
-        vco1ToneObject.frequency.setValueAtTime(finalFrequency, Tone.now());
+        // Only change frequencies if envelope is in NOTE mode
+        if (window.envelopeNode?.parameters?.noteMode === true) {
+            // Set frequency for ALL oscillators using their individual base frequencies
+            // Original oscillator
+            if (vco1ToneObject) {
+                const oscBaseFreq = parseFloat(oscillatorNode?.parameters?.frequency) || 440;
+                const oscFinalFreq = oscBaseFreq * ratio;
+                vco1ToneObject.frequency.setValueAtTime(oscFinalFreq, Tone.now());
+            }
+            
+            // All dynamic oscillators
+            moduleInstances.forEach((moduleInstance, moduleId) => {
+                if (moduleInstance.node?.type === 'OmniOscillator' && moduleInstance.toneObject) {
+                    const oscBaseFreq = parseFloat(moduleInstance.node.parameters.frequency) || 440;
+                    const oscFinalFreq = oscBaseFreq * ratio;
+                    moduleInstance.toneObject.frequency.setValueAtTime(oscFinalFreq, Tone.now());
+                }
+            });
+        }
 
         // Trigger ALL envelopes in the system
-        // Original envelope
+        // Original envelope (both NOTE and GATE mode respond to keys)
         if (envelopeToneObject) {
             envelopeToneObject.triggerAttackRelease("8n", Tone.now());
         }
         
-        // All dynamic envelopes
+        // All dynamic envelopes (both NOTE and GATE mode respond to keys)
         moduleInstances.forEach((moduleInstance, moduleId) => {
             if (moduleInstance.node?.type === 'AmplitudeEnvelope' && moduleInstance.toneObject) {
                 moduleInstance.toneObject.triggerAttackRelease("8n", Tone.now());
@@ -3198,6 +3255,7 @@ function playKey(note) {
         console.log(`Playing note ${note} at ${finalFrequency.toFixed(2)}Hz (base: ${baseFrequency}Hz)`);
     }
 }
+
 
 /**
  * Setup Virtual Keyboard
@@ -3733,6 +3791,26 @@ function initializeNewModuleListeners(moduleInstance) {
             newSelectors.forEach(selector => {
                 setupSingleSelectorInteraction(selector);
             });
+            
+            // Initialize envelope mode toggle buttons
+            const envToggle = moduleElement.querySelector('.env-mode-toggle');
+            if (envToggle) {
+                envToggle.addEventListener('click', (e) => {
+                    const moduleId = moduleElement.dataset.moduleId;
+                    const targetNode = getModuleNodeById(moduleId);
+                    
+                    if (targetNode) {
+                        // Toggle noteMode parameter
+                        targetNode.parameters.noteMode = !targetNode.parameters.noteMode;
+                        
+                        // Update button display
+                        envToggle.textContent = targetNode.parameters.noteMode ? 'NOTE' : 'GATE';
+                        envToggle.dataset.value = targetNode.parameters.noteMode;
+                        
+                        console.log(`🎛️ ${moduleId} note mode: ${targetNode.parameters.noteMode ? 'NOTE' : 'GATE'}`);
+                    }
+                });
+            }
             
             // Initialize P5 visuals for the new module
             const visualElements = moduleElement.querySelectorAll('.wave-visual');
