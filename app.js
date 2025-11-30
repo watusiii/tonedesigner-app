@@ -1050,31 +1050,17 @@ class P5CanvasManager {
         // Get actual filter parameters
         let frequency = 8000, Q = 1, type = 'lowpass';
 
-        // Find the correct filter based on container ID
+        // Get the correct filter parameters based on container ID
         if (containerId) {
-            // Get module ID from container ID (e.g., "filter-2-visual" → "filter-2")
+            // Get module ID from container ID (e.g., "filter-1-visual" → "filter-1")
             const moduleId = containerId.replace('-visual', '');
             
-            // Get the filter node
+            // Get the filter node - works for both original and dynamic filters
             const filterNode = getModuleNodeById(moduleId);
             if (filterNode && filterNode.parameters) {
                 frequency = parseFloat(filterNode.parameters.frequency) || 8000;
                 Q = parseFloat(filterNode.parameters.Q) || 1;
                 type = filterNode.parameters.type || 'lowpass';
-                console.log(`🎨 Using filter params for ${moduleId}:`, { frequency, Q, type });
-            } else {
-                console.log(`❌ Could not find filter node: ${moduleId}`);
-            }
-        } else {
-            // Fallback to original filter for legacy support
-            const filterNodes = [window.filterNode, filterNode].filter(Boolean);
-            if (filterNodes.length > 0) {
-                const node = filterNodes[0];
-                if (node && node.parameters) {
-                    frequency = parseFloat(node.parameters.frequency) || 8000;
-                    Q = parseFloat(node.parameters.Q) || 1;
-                    type = node.parameters.type || 'lowpass';
-                }
             }
         }
 
@@ -1833,7 +1819,13 @@ function initializeP5Manager() {
 
         waveVisuals.forEach((visual, index) => {
             const waveType = visual.dataset.waveType;
-            const containerId = `wave-visual-${index}`;
+            
+            // Find the module this visual belongs to
+            const module = visual.closest('.synth-module');
+            const moduleId = module?.getAttribute('data-module-id');
+            
+            // Use module-based ID if available, otherwise fall back to index-based
+            const containerId = moduleId ? `${moduleId}-visual` : `wave-visual-${index}`;
 
             // Set an ID for the container if it doesn't have one
             if (!visual.id) {
