@@ -520,6 +520,7 @@ class P5CanvasManager {
                 p.noFill();
 
                 // Use the current wave type from the mutable reference
+                console.log(`🎨 P5 DRAW CALLED: ${containerId} with waveType: ${waveTypeRef.current}`);
                 this.drawWaveform(p, waveTypeRef.current, canvasWidth, canvasHeight, config);
             };
 
@@ -535,11 +536,18 @@ class P5CanvasManager {
         };
 
         const p5Instance = new p5(sketch);
-        this.canvases.set(containerId, {
+        const canvasInfo = {
             instance: p5Instance,
             waveType: waveType,
             waveTypeRef: waveTypeRef,
             config: config
+        };
+        this.canvases.set(containerId, canvasInfo);
+        
+        console.log(`📦 Created P5 canvas: ${containerId}`, {
+            hasInstance: !!p5Instance,
+            hasRedraw: !!(p5Instance && p5Instance.redraw),
+            waveType: waveType
         });
 
         return p5Instance;
@@ -728,7 +736,7 @@ class P5CanvasManager {
                 case 'bandpass':
                 case 'notch':
                     // Filter frequency response visualization
-                    waveValue = this.calculateFilterResponse(col, gridSize, waveType);
+                    waveValue = this.calculateFilterResponse(col, gridSize, waveType, config.containerId);
                     break;
                 default:
                     waveValue = 0;
@@ -1038,18 +1046,35 @@ class P5CanvasManager {
      * @param {string} filterType - Type of filter (lowpass, highpass, bandpass, notch)
      * @returns {number} - Wave value (-1 to 1)
      */
-    calculateFilterResponse(col, gridSize, filterType) {
+    calculateFilterResponse(col, gridSize, filterType, containerId) {
         // Get actual filter parameters
         let frequency = 8000, Q = 1, type = 'lowpass';
 
-        // Get real values from the filter node
-        const filterNodes = [window.filterNode, filterNode].filter(Boolean);
-        if (filterNodes.length > 0) {
-            const node = filterNodes[0];
-            if (node && node.parameters) {
-                frequency = parseFloat(node.parameters.frequency) || 8000;
-                Q = parseFloat(node.parameters.Q) || 1;
-                type = node.parameters.type || 'lowpass';
+        // Find the correct filter based on container ID
+        if (containerId) {
+            // Get module ID from container ID (e.g., "filter-2-visual" → "filter-2")
+            const moduleId = containerId.replace('-visual', '');
+            
+            // Get the filter node
+            const filterNode = getModuleNodeById(moduleId);
+            if (filterNode && filterNode.parameters) {
+                frequency = parseFloat(filterNode.parameters.frequency) || 8000;
+                Q = parseFloat(filterNode.parameters.Q) || 1;
+                type = filterNode.parameters.type || 'lowpass';
+                console.log(`🎨 Using filter params for ${moduleId}:`, { frequency, Q, type });
+            } else {
+                console.log(`❌ Could not find filter node: ${moduleId}`);
+            }
+        } else {
+            // Fallback to original filter for legacy support
+            const filterNodes = [window.filterNode, filterNode].filter(Boolean);
+            if (filterNodes.length > 0) {
+                const node = filterNodes[0];
+                if (node && node.parameters) {
+                    frequency = parseFloat(node.parameters.frequency) || 8000;
+                    Q = parseFloat(node.parameters.Q) || 1;
+                    type = node.parameters.type || 'lowpass';
+                }
             }
         }
 
@@ -1120,14 +1145,36 @@ class P5CanvasManager {
      * @param {string} newWaveType - New wave type
      */
     updateWaveType(containerId, newWaveType) {
+        console.log(`🎨 updateWaveType: ${containerId} → ${newWaveType}`);
+        
         const canvas = this.canvases.get(containerId);
         if (canvas) {
+            console.log(`🎨 Canvas found:`, {
+                hasInstance: !!canvas.instance,
+                hasWaveTypeRef: !!canvas.waveTypeRef,
+                hasRedraw: !!(canvas.instance && canvas.instance.redraw),
+                currentWaveType: canvas.waveTypeRef?.current
+            });
+            
             canvas.waveType = newWaveType;
             // Update the mutable reference so the draw loop sees the change
             if (canvas.waveTypeRef) {
                 canvas.waveTypeRef.current = newWaveType;
+                console.log(`🎨 Updated waveTypeRef.current to: ${newWaveType}`);
             }
+            
+            // Force P5 to redraw by calling redraw() on the instance
+            if (canvas.instance && canvas.instance.redraw) {
+                canvas.instance.redraw();
+                console.log(`🎨 Called redraw() for ${containerId}`);
+            } else {
+                console.log(`❌ Cannot call redraw - instance or redraw method missing`);
+            }
+            
             console.log(`P5 Canvas Manager: Updated wave type to ${newWaveType} for ${containerId}`);
+        } else {
+            console.log(`❌ P5 Canvas Manager: No canvas found for ${containerId}`);
+            console.log(`Available canvases:`, Array.from(this.canvases.keys()));
         }
     }
 
@@ -1252,6 +1299,14 @@ function disconnectAllModules() {
             mixerModuleInstance.toneObject.channelGains.forEach(gain => gain.disconnect());
         }
     }
+
+    // Disconnect all dynamically created modules
+    moduleInstances.forEach((moduleInstance, moduleId) => {
+        if (moduleInstance?.toneObject) {
+            moduleInstance.toneObject.disconnect();
+            console.log(`🔌 Disconnected dynamic module: ${moduleId}`);
+        }
+    });
 
     // Also disconnect legacy global objects for safety
     if (vco1ToneObject) vco1ToneObject.disconnect();
@@ -2283,21 +2338,8 @@ function syncEQ8Parameters(node, toneObject) {
         console.error(`❌ Available properties:`, Object.getOwnPropertyNames(toneObject));
     }
     
-    // Update master gain if present and it actually changed
-    if (node.parameters.masterGain !== undefined && toneObject.gain) {
-        const currentDBValue = toneObject.gain.value;
-        const targetDBValue = Tone.gainToDb(node.parameters.masterGain);
-        
-        // Only update if the value actually changed (avoid unnecessary modifications)
-        if (Math.abs(currentDBValue - targetDBValue) > 0.01) {
-            console.log(`🔧 EQ8 Master Gain ACTUALLY changing from ${currentDBValue.toFixed(1)}dB to ${targetDBValue.toFixed(1)}dB`);
-            // TEMPORARILY DISABLE MASTER GAIN UPDATES TO TEST
-            console.log(`🔧 SKIPPING master gain update to test if this fixes audio`);
-            // toneObject.gain.value = targetDBValue;
-        } else {
-            console.log(`🔧 EQ8 Master Gain unchanged (${currentDBValue.toFixed(1)}dB) - skipping update`);
-        }
-    }
+    // Note: Master gain updates removed - they were causing audio routing issues
+    // The master gain is set correctly during EQ8 creation and doesn't need updating during parameter sync
 }
 
 /**
@@ -3028,8 +3070,50 @@ function setupSelectorInteraction() {
             if (targetNode && param) {
                 targetNode.parameters[param] = newValue;
                 syncToneEngine(targetNode);
-                updateCodeDisplay();
 
+                // Update P5 wave visual if it exists
+                console.log(`🔧 Filter type change debug:`, {
+                    p5Manager: !!p5Manager,
+                    param: param,
+                    newValue: newValue,
+                    moduleId: moduleId
+                });
+                
+                if (p5Manager && param === 'type') {
+                    const waveVisual = moduleElement.querySelector('.wave-visual');
+                    console.log(`🔧 DEBUG Filter Visual Update:`, {
+                        waveVisual: waveVisual,
+                        visualId: waveVisual?.id,
+                        newValue: newValue,
+                        moduleId: moduleId
+                    });
+                    
+                    if (waveVisual && waveVisual.id) {
+                        waveVisual.dataset.waveType = newValue;
+                        console.log(`🔧 About to call p5Manager.updateWaveType(${waveVisual.id}, ${newValue})`);
+                        
+                        if (p5Manager.updateWaveType) {
+                            try {
+                                p5Manager.updateWaveType(waveVisual.id, newValue);
+                                console.log(`📊 Successfully called updateWaveType`);
+                            } catch (error) {
+                                console.error(`❌ Error calling updateWaveType:`, error);
+                            }
+                        } else {
+                            console.log(`❌ p5Manager.updateWaveType function not found`);
+                            console.log(`p5Manager methods:`, Object.getOwnPropertyNames(p5Manager));
+                        }
+                    } else {
+                        console.log(`❌ No visual ID found for filter ${moduleId}`);
+                    }
+                } else {
+                    console.log(`❌ P5 update skipped:`, {
+                        hasP5Manager: !!p5Manager,
+                        isTypeParam: param === 'type'
+                    });
+                }
+
+                updateCodeDisplay();
                 console.log(`🎛️ ${moduleId} ${param} changed to ${newValue}`);
             }
         }
@@ -3802,14 +3886,21 @@ function initializeP5VisualsForModule(moduleId, moduleType) {
     const visualElements = moduleElement.querySelectorAll('.wave-visual');
     visualElements.forEach(visual => {
         if (!visual.id) {
-            // Generate unique ID for the visual element
-            const visualType = visual.dataset.waveType || moduleType.toLowerCase();
-            visual.id = `${moduleId}-${visualType}-visual`;
+            // Generate unique ID for the visual element (don't include wave type since it can change)
+            visual.id = `${moduleId}-visual`;
             console.log(`📊 Created P5 visual: ${visual.id}`);
+            const visualType = visual.dataset.waveType || moduleType.toLowerCase();
             
             // Initialize P5 canvas for this element
             if (manager.createWaveCanvas) {
-                manager.createWaveCanvas(visual.id, visualType);
+                manager.createWaveCanvas(visual.id, visualType, {
+                    amplitude: 45,
+                    frequency: 2.5, 
+                    strokeWeight: 1.5,
+                    strokeColor: '#000000',
+                    backgroundColor: 'transparent'
+                });
+                console.log(`📊 Created P5 canvas for ${visualType} (${visual.id})`);
             }
         }
     });
