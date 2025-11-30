@@ -716,7 +716,7 @@ class P5CanvasManager {
                     break;
                 case 'adsr':
                     // ADSR envelope visualization - reflects actual knob values
-                    waveValue = this.calculateADSRValue(col, gridSize);
+                    waveValue = this.calculateADSRValue(col, gridSize, config.containerId);
                     break;
                 case 'reverb':
                     // Reverb visualization - static impulse response display
@@ -820,16 +820,23 @@ class P5CanvasManager {
      * @param {number} gridSize - Size of the pixel grid
      * @returns {number} - Wave value (-1 to 1)
      */
-    calculateADSRValue(col, gridSize) {
+    calculateADSRValue(col, gridSize, containerId) {
         // Get actual ADSR parameters from the envelope node
         let attack = 0.1, decay = 0.3, sustain = 0.7, release = 0.4;
 
-        // Get real values from the envelope node
-        if (window.envelopeNode && window.envelopeNode.parameters) {
-            attack = parseFloat(window.envelopeNode.parameters.attack) || 0.1;
-            decay = parseFloat(window.envelopeNode.parameters.decay) || 0.3;
-            sustain = parseFloat(window.envelopeNode.parameters.sustain) || 0.7;
-            release = parseFloat(window.envelopeNode.parameters.release) || 0.4;
+        // Get the correct envelope parameters based on container ID
+        if (containerId) {
+            // Get module ID from container ID (e.g., "envelope-2-visual" → "envelope-2")
+            const moduleId = containerId.replace('-visual', '');
+            
+            // Get the envelope node - works for both original and dynamic envelopes
+            const envelopeNode = getModuleNodeById(moduleId);
+            if (envelopeNode && envelopeNode.parameters) {
+                attack = parseFloat(envelopeNode.parameters.attack) || 0.1;
+                decay = parseFloat(envelopeNode.parameters.decay) || 0.3;
+                sustain = parseFloat(envelopeNode.parameters.sustain) || 0.7;
+                release = parseFloat(envelopeNode.parameters.release) || 0.4;
+            }
         }
 
         // Normalize parameters for visual representation
@@ -2207,8 +2214,8 @@ function syncToneEngine(node) {
         console.error(`Error syncing ${node.id}:`, error);
     }
     
-    // Trigger visual redraw for filter modules when parameters change
-    if (p5Manager && node.type === 'Filter') {
+    // Trigger visual redraw for modules with visuals when parameters change
+    if (p5Manager && (node.type === 'Filter' || node.type === 'AmplitudeEnvelope')) {
         const visualId = `${node.id}-visual`;
         const canvas = p5Manager.canvases?.get(visualId);
         if (canvas && canvas.instance && canvas.instance.redraw) {
@@ -3175,8 +3182,18 @@ function playKey(note) {
         // Set the oscillator frequency
         vco1ToneObject.frequency.setValueAtTime(finalFrequency, Tone.now());
 
-        // Trigger the envelope with a short duration
-        envelopeToneObject.triggerAttackRelease("8n", Tone.now());
+        // Trigger ALL envelopes in the system
+        // Original envelope
+        if (envelopeToneObject) {
+            envelopeToneObject.triggerAttackRelease("8n", Tone.now());
+        }
+        
+        // All dynamic envelopes
+        moduleInstances.forEach((moduleInstance, moduleId) => {
+            if (moduleInstance.node?.type === 'AmplitudeEnvelope' && moduleInstance.toneObject) {
+                moduleInstance.toneObject.triggerAttackRelease("8n", Tone.now());
+            }
+        });
 
         console.log(`Playing note ${note} at ${finalFrequency.toFixed(2)}Hz (base: ${baseFrequency}Hz)`);
     }
@@ -3792,6 +3809,17 @@ function setupSingleKnobInteraction(knob) {
             const sensitivity = 1.5;
             const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
             newValue = Math.max(0.001, Math.min(20, startValue * multiplier));
+            newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+        } else if (param === 'attack' || param === 'decay' || param === 'release') {
+            // Time parameters: 0.01s to 5s with logarithmic scaling
+            const sensitivity = 1.8;
+            const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+            newValue = Math.max(0.01, Math.min(5, startValue * multiplier));
+            newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+        } else if (param === 'sustain') {
+            // Sustain level: 0.0 to 1.0 linear scaling
+            const sensitivity = 0.01;
+            newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
             newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
         }
         
