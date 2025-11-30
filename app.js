@@ -2235,10 +2235,17 @@ function syncEQ8Parameters(node, toneObject) {
     const midGains = [band4Gain, band5Gain];
     const highGains = [band6Gain, band7Gain, band8Gain];
     
-    // Average the band gains for each EQ3 section
-    const lowGain = lowGains.reduce((a, b) => a + b, 0) / lowGains.length;
-    const midGain = midGains.reduce((a, b) => a + b, 0) / midGains.length;
-    const highGain = highGains.reduce((a, b) => a + b, 0) / highGains.length;
+    // Average the band gains for each EQ3 section with validation
+    let lowGain = lowGains.reduce((a, b) => a + b, 0) / lowGains.length;
+    let midGain = midGains.reduce((a, b) => a + b, 0) / midGains.length;
+    let highGain = highGains.reduce((a, b) => a + b, 0) / highGains.length;
+    
+    // Validate calculations - prevent NaN/Infinity from breaking Tone.js
+    lowGain = isFinite(lowGain) ? lowGain : 0;
+    midGain = isFinite(midGain) ? midGain : 0; 
+    highGain = isFinite(highGain) ? highGain : 0;
+    
+    console.log('🔧 EQ8 calculated gains:', { lowGain, midGain, highGain, allFinite: isFinite(lowGain) && isFinite(midGain) && isFinite(highGain) });
     
     console.log(`🔧 EQ8 DEBUG: toneObject structure:`, {
         hasEq3: !!toneObject.eq3,
@@ -2251,9 +2258,20 @@ function syncEQ8Parameters(node, toneObject) {
     });
     
     if (toneObject.eq3) {
-        toneObject.eq3.low.value = lowGain;
-        toneObject.eq3.mid.value = midGain;
-        toneObject.eq3.high.value = highGain;
+        // Store connection state before modification
+        console.log('🔧 EQ3 before sync - connected:', !!toneObject.eq3.input);
+        
+        // Safely set EQ3 parameters with validated values
+        try {
+            toneObject.eq3.low.value = lowGain;
+            toneObject.eq3.mid.value = midGain;
+            toneObject.eq3.high.value = highGain;
+            
+            // Check if connection is still intact
+            console.log('🔧 EQ3 after sync - connected:', !!toneObject.eq3.input);
+        } catch (error) {
+            console.error('❌ Error setting EQ3 parameters:', error);
+        }
         
         console.log(`✅ Synced ${node.id} EQ bands:`, {
             'Low (1-3)': lowGain.toFixed(1) + 'dB',
@@ -2265,10 +2283,20 @@ function syncEQ8Parameters(node, toneObject) {
         console.error(`❌ Available properties:`, Object.getOwnPropertyNames(toneObject));
     }
     
-    // Update master gain if present
+    // Update master gain if present and it actually changed
     if (node.parameters.masterGain !== undefined && toneObject.gain) {
-        toneObject.gain.value = Tone.gainToDb(node.parameters.masterGain);
-        console.log(`  Synced ${node.id} master gain: ${node.parameters.masterGain} (${toneObject.gain.value.toFixed(1)}dB)`);
+        const currentDBValue = toneObject.gain.value;
+        const targetDBValue = Tone.gainToDb(node.parameters.masterGain);
+        
+        // Only update if the value actually changed (avoid unnecessary modifications)
+        if (Math.abs(currentDBValue - targetDBValue) > 0.01) {
+            console.log(`🔧 EQ8 Master Gain ACTUALLY changing from ${currentDBValue.toFixed(1)}dB to ${targetDBValue.toFixed(1)}dB`);
+            // TEMPORARILY DISABLE MASTER GAIN UPDATES TO TEST
+            console.log(`🔧 SKIPPING master gain update to test if this fixes audio`);
+            // toneObject.gain.value = targetDBValue;
+        } else {
+            console.log(`🔧 EQ8 Master Gain unchanged (${currentDBValue.toFixed(1)}dB) - skipping update`);
+        }
     }
 }
 
