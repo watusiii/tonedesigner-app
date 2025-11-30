@@ -520,7 +520,6 @@ class P5CanvasManager {
                 p.noFill();
 
                 // Use the current wave type from the mutable reference
-                console.log(`🎨 P5 DRAW CALLED: ${containerId} with waveType: ${waveTypeRef.current}`);
                 this.drawWaveform(p, waveTypeRef.current, canvasWidth, canvasHeight, config);
             };
 
@@ -2207,6 +2206,15 @@ function syncToneEngine(node) {
     } catch (error) {
         console.error(`Error syncing ${node.id}:`, error);
     }
+    
+    // Trigger visual redraw for filter modules when parameters change
+    if (p5Manager && node.type === 'Filter') {
+        const visualId = `${node.id}-visual`;
+        const canvas = p5Manager.canvases?.get(visualId);
+        if (canvas && canvas.instance && canvas.instance.redraw) {
+            canvas.instance.redraw();
+        }
+    }
 }
 
 /**
@@ -3779,6 +3787,12 @@ function setupSingleKnobInteraction(knob) {
             const sensitivity = 20;
             newValue = Math.max(-1200, Math.min(1200, startValue + (deltaY * sensitivity)));
             newValue = Math.round(newValue);
+        } else if (param === 'Q') {
+            // Q range: 0.001 to 20 with logarithmic scaling
+            const sensitivity = 1.5;
+            const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+            newValue = Math.max(0.001, Math.min(20, startValue * multiplier));
+            newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
         }
         
         // Update the module data and UI
