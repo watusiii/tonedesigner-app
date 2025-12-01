@@ -132,7 +132,7 @@ const OscillatorModule = {
                     <button class="bypass-toggle ${oscillatorData.parameters.bypass ? 'bypassed' : ''}" 
                             data-param="bypass" 
                             data-value="${oscillatorData.parameters.bypass}">
-                        ${oscillatorData.parameters.bypass ? 'BYP' : 'ON'}
+                        B
                     </button>
                 </div>
                 
@@ -220,7 +220,7 @@ const NoiseModule = {
                     <button class="bypass-toggle ${noiseData.parameters.bypass ? 'bypassed' : ''}" 
                             data-param="bypass" 
                             data-value="${noiseData.parameters.bypass}">
-                        ${noiseData.parameters.bypass ? 'BYP' : 'ON'}
+                        B
                     </button>
                 </div>
                 
@@ -309,7 +309,7 @@ const FilterModule = {
                     <button class="bypass-toggle ${filterData.parameters.bypass ? 'bypassed' : ''}" 
                             data-param="bypass" 
                             data-value="${filterData.parameters.bypass}">
-                        ${filterData.parameters.bypass ? 'BYP' : 'ON'}
+                        B
                     </button>
                 </div>
                 
@@ -409,13 +409,13 @@ const EnvelopeModule = {
                 <div class="module-header">
                     <h3 class="module-title">ENV/VCA-1</h3>
                     <div class="module-header-controls">
-                        <button class="env-mode-toggle" data-param="noteMode" data-value="${envelopeData.parameters.noteMode}">
-                            ${envelopeData.parameters.noteMode ? 'NOTE' : 'GATE'}
-                        </button>
                         <button class="bypass-toggle ${envelopeData.parameters.bypass ? 'bypassed' : ''}" 
                                 data-param="bypass" 
                                 data-value="${envelopeData.parameters.bypass}">
-                            ${envelopeData.parameters.bypass ? 'BYP' : 'ON'}
+                            B
+                        </button>
+                        <button class="env-mode-toggle" data-param="noteMode" data-value="${envelopeData.parameters.noteMode}">
+                            ${envelopeData.parameters.noteMode ? 'NOTE' : 'GATE'}
                         </button>
                     </div>
                 </div>
@@ -511,7 +511,7 @@ const LFOModule = {
                     <button class="bypass-toggle ${lfoData.parameters.bypass ? 'bypassed' : ''}" 
                             data-param="bypass" 
                             data-value="${lfoData.parameters.bypass}">
-                        ${lfoData.parameters.bypass ? 'BYP' : 'ON'}
+                        B
                     </button>
                 </div>
                 
@@ -617,7 +617,7 @@ const ReverbModule = {
                     <button class="bypass-toggle ${reverbData.parameters.bypass ? 'bypassed' : ''}" 
                             data-param="bypass" 
                             data-value="${reverbData.parameters.bypass}">
-                        ${reverbData.parameters.bypass ? 'BYP' : 'ON'}
+                        B
                     </button>
                 </div>
                 
@@ -767,7 +767,7 @@ const EQ8Module = {
                     <button class="bypass-toggle ${eqData.parameters.bypass ? 'bypassed' : ''}" 
                             data-param="bypass" 
                             data-value="${eqData.parameters.bypass}">
-                        ${eqData.parameters.bypass ? 'BYP' : 'ON'}
+                        B
                     </button>
                 </div>
                 
@@ -871,7 +871,7 @@ const MixerModule = {
                     <button class="bypass-toggle ${mixerData.parameters.bypass ? 'bypassed' : ''}" 
                             data-param="bypass" 
                             data-value="${mixerData.parameters.bypass}">
-                        ${mixerData.parameters.bypass ? 'BYP' : 'ON'}
+                        B
                     </button>
                 </div>
                 

@@ -2286,7 +2286,7 @@ function renderReverbModule(reverbData) {
  * 
  * @param {Object} node - The synth node data structure to sync
  */
-function syncToneEngine(node) {
+function syncToneEngine(node, changedParam = null) {
     if (!node) {
         console.warn('syncToneEngine: No node provided');
         return;
@@ -2299,13 +2299,13 @@ function syncToneEngine(node) {
         return;
     }
 
-    console.log(`🔄 Syncing ${node.id} (${node.type}) with Tone.js object`);
+    console.log(`🔄 Syncing ${node.id} (${node.type}) with Tone.js object - changed param: ${changedParam || 'all'}`);
 
     // Sync parameters based on module type
     try {
         switch (node.type) {
             case 'OmniOscillator':
-                syncOscillatorParameters(node, toneObject);
+                syncOscillatorParameters(node, toneObject, changedParam);
                 break;
             case 'Noise':
                 syncNoiseParameters(node, toneObject);
@@ -2350,8 +2350,40 @@ function syncToneEngine(node) {
 /**
  * Sync oscillator parameters
  */
-function syncOscillatorParameters(node, toneObject) {
-    toneObject.frequency.setValueAtTime(node.parameters.frequency, Tone.now());
+function syncOscillatorParameters(node, toneObject, changedParam = null) {
+    // Always sync frequency if it was directly changed by user
+    if (changedParam === 'frequency') {
+        toneObject.frequency.setValueAtTime(node.parameters.frequency, Tone.now());
+        console.log(`🔥 FREQUENCY KNOB: ${node.id} frequency set to ${node.parameters.frequency}Hz`);
+    } else {
+        // For other parameter changes, check if we should sync frequency based on noteMode
+        let connectedEnvelope = null;
+        
+        // Check for legacy envelope first
+        if (node.id === 'oscillator-1') {
+            connectedEnvelope = getModuleNodeById('envelope-1');
+        } else {
+            // For dynamic modules, find the first envelope
+            moduleInstances.forEach((envInstance) => {
+                if (envInstance.node?.type === 'AmplitudeEnvelope' && !connectedEnvelope) {
+                    connectedEnvelope = envInstance.node;
+                }
+            });
+        }
+        
+        // Only sync frequency if we're in GATE mode (noteMode = false)
+        // In NOTE mode, keyboard controls frequency and we shouldn't override it
+        const shouldSyncFrequency = !connectedEnvelope || connectedEnvelope.parameters.noteMode === false;
+        
+        if (shouldSyncFrequency) {
+            toneObject.frequency.setValueAtTime(node.parameters.frequency, Tone.now());
+            console.log(`  Synced ${node.id} frequency: ${node.parameters.frequency}Hz (GATE mode)`);
+        } else {
+            console.log(`  Skipped ${node.id} frequency sync (NOTE mode - keyboard controls frequency)`);
+        }
+    }
+    
+    // Always sync other parameters
     toneObject.type = node.parameters.waveform;
     toneObject.detune.value = node.parameters.detune;
     
@@ -2362,7 +2394,7 @@ function syncOscillatorParameters(node, toneObject) {
         toneObject.volume.value = 0; // Reset to normal volume
     }
     
-    console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.waveform}, detune: ${node.parameters.detune}, bypass: ${node.parameters.bypass}`);
+    console.log(`  Synced ${node.id} - type: ${node.parameters.waveform}, detune: ${node.parameters.detune}, bypass: ${node.parameters.bypass}`);
 }
 
 /**
@@ -2815,7 +2847,7 @@ function setupEnvelopeToggles() {
                 toggleBtn.textContent = targetNode.parameters.noteMode ? 'NOTE' : 'GATE';
                 toggleBtn.dataset.value = targetNode.parameters.noteMode;
                 
-                console.log(`Envelope ${containerId} mode changed to: ${targetNode.parameters.noteMode ? 'NOTE' : 'GATE'}`);
+                console.log(`🎼 ENVELOPE MODE TOGGLE: ${containerId} changed to ${targetNode.parameters.noteMode ? 'NOTE' : 'GATE'} mode`);
             } else {
                 console.error(`Could not find module node for ${containerId}`);
             }
@@ -2846,7 +2878,7 @@ function setupBypassToggles() {
                 
                 // Update button text, dataset, and class
                 const bypassed = targetNode.parameters.bypass;
-                toggleBtn.textContent = bypassed ? 'BYP' : 'ON';
+                toggleBtn.textContent = 'B';
                 toggleBtn.dataset.value = bypassed;
                 toggleBtn.classList.toggle('bypassed', bypassed);
                 
@@ -3017,7 +3049,7 @@ function setupKnobInteraction() {
 
                 // Sync with Tone.js
                 console.log(`🎛️ KNOB DEBUG: Calling syncToneEngine for ${moduleId}/${param}`);
-                syncToneEngine(targetNode);
+                syncToneEngine(targetNode, param);
 
                 // Update ADSR visual if this is an envelope parameter
                 if (moduleId === 'envelope-1' && p5Manager) {
@@ -3161,7 +3193,7 @@ function setupKnobInteraction() {
 
                 // Sync with Tone.js
                 console.log(`🎛️ KNOB DEBUG: Calling syncToneEngine for ${moduleId}/${param}`);
-                syncToneEngine(targetNode);
+                syncToneEngine(targetNode, param);
 
                 // Update ADSR visual if this is an envelope parameter
                 if (moduleId === 'envelope-1' && p5Manager) {
@@ -3316,8 +3348,10 @@ function updateKnobVisuals(knob, param, value) {
             displayText = `${value.toFixed(2)}x`;
         }
 
-        // Apply rotation to indicator
-        indicator.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+        // Apply rotation to entire knob (not just indicator)
+        knob.style.transform = `rotate(${rotation}deg)`;
+        // Reset indicator transform to just center it
+        indicator.style.transform = `translateX(-50%)`;
 
         // Update value display
         valueDisplay.textContent = displayText;
@@ -3467,26 +3501,33 @@ function playKey(note) {
         // Get base frequency from VCO knob setting
         const baseFrequency = getModuleNodeById('oscillator-1').parameters.frequency;
 
-        // Convert note to frequency and calculate ratio
+        // Convert note to frequency - treat knob frequency as the C4 reference
         const noteFrequency = Tone.Frequency(note).toFrequency();
         const C4Frequency = Tone.Frequency("C4").toFrequency(); // Reference frequency (261.63 Hz)
         const ratio = noteFrequency / C4Frequency;
 
         // Apply the note ratio to the base frequency from the knob
+        // The knob frequency is treated as C4, so we scale from there
         const finalFrequency = baseFrequency * ratio;
 
         // Set frequency for ALL oscillators using their individual base frequencies
         // Original oscillator - only change frequency if envelope is in NOTE mode
         const originalEnvelope = getModuleNodeById('envelope-1');
+        console.log(`🎹 PLAY KEY: ${note}, envelope noteMode = ${originalEnvelope?.parameters?.noteMode}`);
+        
         if (vco1ToneObject && originalEnvelope?.parameters?.noteMode === true) {
             const oscBaseFreq = parseFloat(getModuleNodeById('oscillator-1').parameters.frequency) || 440;
             const oscFinalFreq = oscBaseFreq * ratio;
+            console.log(`🎹 PLAY KEY NOTE MODE: Setting freq ${oscBaseFreq}Hz * ${ratio.toFixed(3)} = ${oscFinalFreq.toFixed(1)}Hz`);
             vco1ToneObject.frequency.setValueAtTime(oscFinalFreq, Tone.now());
+        } else if (vco1ToneObject) {
+            console.log(`🎹 PLAY KEY GATE MODE: NOT changing frequency, staying at knob setting`);
         }
         
         // Dynamic oscillators - each one checks its own envelope's noteMode
+        // Skip oscillator-1 as it's handled by legacy code above
         moduleInstances.forEach((moduleInstance, moduleId) => {
-            if (moduleInstance.node?.type === 'OmniOscillator' && moduleInstance.toneObject) {
+            if (moduleInstance.node?.type === 'OmniOscillator' && moduleInstance.toneObject && moduleId !== 'oscillator-1') {
                 // Find this oscillator's connected envelope
                 let shouldChangeFreq = true; // default to NOTE mode behavior
                 moduleInstances.forEach((envInstance) => {
@@ -3882,6 +3923,14 @@ function showModuleSelectionMenu() {
     menu.id = 'module-selection-menu';
     menu.className = 'module-selection-menu';
     
+    // Function to close menu with slide-down animation
+    function closeMenu() {
+        menu.classList.remove('show');
+        setTimeout(() => {
+            menu.remove();
+        }, 300); // Match CSS transition duration
+    }
+    
     // Add title
     const title = document.createElement('div');
     title.className = 'module-selection-title';
@@ -3895,7 +3944,7 @@ function showModuleSelectionMenu() {
         option.textContent = getModuleDisplayName(moduleType);
         option.addEventListener('click', () => {
             addNewModule(moduleType);
-            menu.remove();
+            closeMenu();
         });
         menu.appendChild(option);
     });
@@ -3905,25 +3954,23 @@ function showModuleSelectionMenu() {
     cancelOption.className = 'module-selection-option cancel-option';
     cancelOption.textContent = 'CANCEL';
     cancelOption.addEventListener('click', () => {
-        menu.remove();
+        closeMenu();
     });
     menu.appendChild(cancelOption);
     
-    // Position menu near the + button
-    const addButton = document.getElementById('add-module-button');
-    const buttonRect = addButton.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.left = `${buttonRect.left}px`;
-    menu.style.top = `${buttonRect.top - 200}px`; // Above the button
-    
     // Add menu to body
     document.body.appendChild(menu);
+    
+    // Trigger slide-up animation
+    setTimeout(() => {
+        menu.classList.add('show');
+    }, 10);
     
     // Close menu when clicking outside
     setTimeout(() => {
         document.addEventListener('click', function closeMenuOnOutsideClick(e) {
             if (!menu.contains(e.target) && e.target !== addButton) {
-                menu.remove();
+                closeMenu();
                 document.removeEventListener('click', closeMenuOnOutsideClick);
             }
         });
@@ -4095,7 +4142,7 @@ function initializeNewModuleListeners(moduleInstance) {
                         
                         // Update button display and class
                         const bypassed = targetNode.parameters.bypass;
-                        bypassToggle.textContent = bypassed ? 'BYP' : 'ON';
+                        bypassToggle.textContent = 'B';
                         bypassToggle.dataset.value = bypassed;
                         bypassToggle.classList.toggle('bypassed', bypassed);
                         
