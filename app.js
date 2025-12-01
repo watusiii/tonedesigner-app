@@ -677,6 +677,12 @@ class P5CanvasManager {
         // Clear background
         p.background(255); // White background
 
+        // Special handling for noise types - fill entire grid with random pixels
+        if (waveType.includes('noise')) {
+            this.drawNoisePixels(p, waveType, gridSize, pixelWidth, pixelHeight);
+            return;
+        }
+
         // Create a 2D array to track which pixels should be lit
         const pixelMap = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
 
@@ -737,6 +743,18 @@ class P5CanvasManager {
                 case 'notch':
                     // Filter frequency response visualization
                     waveValue = this.calculateFilterResponse(col, gridSize, waveType, config.containerId);
+                    break;
+                case 'white-noise':
+                    // White noise visualization - random values
+                    waveValue = (Math.random() - 0.5) * 2;
+                    break;
+                case 'pink-noise':
+                    // Pink noise visualization - correlated random values
+                    waveValue = this.calculatePinkNoise(col, gridSize);
+                    break;
+                case 'brown-noise':
+                    // Brown noise visualization - highly correlated random walk
+                    waveValue = this.calculateBrownNoise(col, gridSize);
                     break;
                 default:
                     waveValue = 0;
@@ -1118,6 +1136,104 @@ class P5CanvasManager {
         const waveValue = response * 2 - 1;
 
         return Math.max(-1, Math.min(1, waveValue));
+    }
+
+    /**
+     * Calculate pink noise visualization (1/f noise)
+     * @param {number} col - Current column
+     * @param {number} gridSize - Grid size
+     * @returns {number} Wave value between -1 and 1
+     */
+    calculatePinkNoise(col, gridSize) {
+        // Pink noise has more power at lower frequencies
+        // Use time-based seed for consistent but random-looking pattern
+        const timeSeed = Math.floor(Date.now() / 100) + col;
+        const random = this.seededRandom(timeSeed);
+        
+        // Apply 1/f characteristic by weighting higher columns less
+        const freqWeight = 1 / (1 + col / gridSize);
+        return (random - 0.5) * 2 * freqWeight;
+    }
+
+    /**
+     * Calculate brown noise visualization (1/f² noise)
+     * @param {number} col - Current column
+     * @param {number} gridSize - Grid size
+     * @returns {number} Wave value between -1 and 1
+     */
+    calculateBrownNoise(col, gridSize) {
+        // Brown noise - random walk pattern
+        if (!this.brownNoiseValue) this.brownNoiseValue = 0;
+        
+        const timeSeed = Math.floor(Date.now() / 200) + col;
+        const random = this.seededRandom(timeSeed);
+        
+        // Random walk with stronger correlation
+        this.brownNoiseValue += (random - 0.5) * 0.3;
+        this.brownNoiseValue = Math.max(-1, Math.min(1, this.brownNoiseValue));
+        
+        return this.brownNoiseValue;
+    }
+
+    /**
+     * Seeded random number generator for consistent noise patterns
+     * @param {number} seed - Random seed
+     * @returns {number} Random value between 0 and 1
+     */
+    seededRandom(seed) {
+        const x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
+    }
+
+    /**
+     * Draw noise pixels (all squares blinking randomly)
+     * @param {Object} p - P5.js instance
+     * @param {string} noiseType - Type of noise (white-noise, pink-noise, brown-noise)
+     * @param {number} gridSize - Grid size (16x16)
+     * @param {number} pixelWidth - Width of each pixel
+     * @param {number} pixelHeight - Height of each pixel
+     */
+    drawNoisePixels(p, noiseType, gridSize, pixelWidth, pixelHeight) {
+        p.noStroke();
+        
+        // Time-based seed for animation
+        const timeSeed = Math.floor(Date.now() / 150); // Change every 150ms
+        
+        for (let row = 0; row < gridSize; row++) {
+            for (let col = 0; col < gridSize; col++) {
+                let pixelValue = 0;
+                const pixelSeed = timeSeed + row * gridSize + col;
+                
+                switch (noiseType) {
+                    case 'white-noise':
+                        // Pure random for each pixel
+                        pixelValue = this.seededRandom(pixelSeed);
+                        break;
+                    case 'pink-noise':
+                        // Less high frequency content
+                        const freqWeight = 1 / (1 + (row + col) / (gridSize * 2));
+                        pixelValue = this.seededRandom(pixelSeed) * freqWeight;
+                        break;
+                    case 'brown-noise':
+                        // Very correlated, slower changes
+                        const slowSeed = Math.floor(timeSeed / 3) + Math.floor(row / 2) * gridSize + Math.floor(col / 2);
+                        pixelValue = this.seededRandom(slowSeed);
+                        break;
+                }
+                
+                // Threshold for on/off (adjust for different noise densities)
+                const threshold = noiseType === 'white-noise' ? 0.5 : 
+                                noiseType === 'pink-noise' ? 0.4 : 0.3;
+                
+                if (pixelValue > threshold) {
+                    p.fill(0); // Black pixel (noise is ON)
+                } else {
+                    p.fill(255); // White pixel (noise is OFF)
+                }
+                
+                p.rect(col * pixelWidth, row * pixelHeight, pixelWidth, pixelHeight);
+            }
+        }
     }
 
     /**
@@ -2191,6 +2307,9 @@ function syncToneEngine(node) {
             case 'OmniOscillator':
                 syncOscillatorParameters(node, toneObject);
                 break;
+            case 'Noise':
+                syncNoiseParameters(node, toneObject);
+                break;
             case 'Filter':
                 syncFilterParameters(node, toneObject);
                 break;
@@ -2232,31 +2351,83 @@ function syncToneEngine(node) {
  * Sync oscillator parameters
  */
 function syncOscillatorParameters(node, toneObject) {
-    toneObject.frequency.value = node.parameters.frequency;
+    toneObject.frequency.setValueAtTime(node.parameters.frequency, Tone.now());
     toneObject.type = node.parameters.waveform;
     toneObject.detune.value = node.parameters.detune;
-    console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.waveform}, detune: ${node.parameters.detune}`);
+    
+    // Handle bypass - mute oscillator when bypassed
+    if (node.parameters.bypass) {
+        toneObject.volume.value = -Infinity;
+    } else {
+        toneObject.volume.value = 0; // Reset to normal volume
+    }
+    
+    console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.waveform}, detune: ${node.parameters.detune}, bypass: ${node.parameters.bypass}`);
+}
+
+/**
+ * Sync noise parameters
+ */
+function syncNoiseParameters(node, toneObject) {
+    toneObject.type = node.parameters.type;
+    toneObject.playbackRate = node.parameters.playbackRate;
+    
+    // Handle bypass - mute noise when bypassed (never stop/start to avoid timing issues)
+    if (node.parameters.bypass) {
+        toneObject.volume.value = -Infinity;
+    } else {
+        toneObject.volume.value = Tone.gainToDb(node.parameters.volume);
+    }
+    
+    console.log(`  Synced ${node.id} - type: ${node.parameters.type}, volume: ${node.parameters.volume}, rate: ${node.parameters.playbackRate}, bypass: ${node.parameters.bypass}`);
 }
 
 /**
  * Sync filter parameters
  */
 function syncFilterParameters(node, toneObject) {
-    toneObject.frequency.value = node.parameters.frequency;
-    toneObject.type = node.parameters.type;
-    toneObject.Q.value = node.parameters.Q;
-    console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.type}, Q: ${node.parameters.Q}`);
+    // Handle bypass - if bypassed, use a different approach
+    if (node.parameters.bypass) {
+        // For filters, we need to check if it's the original filter or a bypass gain node
+        if (toneObject.bypassedFilter) {
+            // This is already a bypass gain node, keep it as is
+        } else {
+            // This is the original filter - we can't easily convert it to bypass
+            // For now, just set it to have no effect (Q=0, cutoff very high for lowpass)
+            if (node.parameters.type === 'lowpass') {
+                toneObject.frequency.value = 22000; // Very high cutoff
+            } else if (node.parameters.type === 'highpass') {
+                toneObject.frequency.value = 20; // Very low cutoff
+            }
+            toneObject.Q.value = 0.1; // Minimal resonance
+        }
+    } else {
+        // Normal operation
+        toneObject.frequency.value = node.parameters.frequency;
+        toneObject.type = node.parameters.type;
+        toneObject.Q.value = node.parameters.Q;
+    }
+    
+    console.log(`  Synced ${node.id} - freq: ${node.parameters.frequency}Hz, type: ${node.parameters.type}, Q: ${node.parameters.Q}, bypass: ${node.parameters.bypass}`);
 }
 
 /**
  * Sync envelope parameters
  */
 function syncEnvelopeParameters(node, toneObject) {
-    toneObject.attack = node.parameters.attack;
-    toneObject.decay = node.parameters.decay;
-    toneObject.sustain = node.parameters.sustain;
-    toneObject.release = node.parameters.release;
-    console.log(`  Synced ${node.id} - ADSR: ${node.parameters.attack}/${node.parameters.decay}/${node.parameters.sustain}/${node.parameters.release}`);
+    // Handle bypass - if bypassed and it's a gain node, just use gain=1
+    if (node.parameters.bypass && toneObject.bypassedEnvelope) {
+        // This is a bypass gain node, keep gain at 1 for bypass
+        toneObject.gain.value = 1;
+    } else if (!node.parameters.bypass) {
+        // Normal envelope operation
+        toneObject.attack = node.parameters.attack;
+        toneObject.decay = node.parameters.decay;
+        toneObject.sustain = node.parameters.sustain;
+        toneObject.release = node.parameters.release;
+    }
+    
+    console.log(`  Synced ${node.id} - ADSR: ${node.parameters.attack}/${node.parameters.decay}/${node.parameters.sustain}/${node.parameters.release}, bypass: ${node.parameters.bypass}`);
 }
 
 /**
@@ -2266,20 +2437,37 @@ function syncLFOParameters(node, toneObject) {
     const multiplier = parseFloat(node.parameters.multiplier) || 1;
     const effectiveFreq = node.parameters.frequency * multiplier;
     
-    toneObject.frequency.value = effectiveFreq;
-    toneObject.type = node.parameters.type;
-    toneObject.min = node.parameters.min;
-    toneObject.max = node.parameters.max;
-    console.log(`  Synced ${node.id} - freq: ${effectiveFreq}Hz, type: ${node.parameters.type}, range: ${node.parameters.min}-${node.parameters.max}Hz`);
+    // Handle bypass - stop/start LFO
+    if (node.parameters.bypass) {
+        toneObject.stop();
+    } else {
+        toneObject.frequency.value = effectiveFreq;
+        toneObject.type = node.parameters.type;
+        toneObject.min = node.parameters.min;
+        toneObject.max = node.parameters.max;
+        
+        // Start LFO if it's not already running
+        if (toneObject.state !== 'started') {
+            toneObject.start();
+        }
+    }
+    
+    console.log(`  Synced ${node.id} - freq: ${effectiveFreq}Hz, type: ${node.parameters.type}, range: ${node.parameters.min}-${node.parameters.max}Hz, bypass: ${node.parameters.bypass}`);
 }
 
 /**
  * Sync reverb parameters
  */
 function syncReverbParameters(node, toneObject) {
-    toneObject.decay = node.parameters.decay;
-    toneObject.wet.value = node.parameters.wet;
-    console.log(`  Synced ${node.id} - decay: ${node.parameters.decay}s, wet: ${node.parameters.wet}`);
+    // Handle bypass - set wet to 0 when bypassed
+    if (node.parameters.bypass) {
+        toneObject.wet.value = 0;
+    } else {
+        toneObject.decay = node.parameters.decay;
+        toneObject.wet.value = node.parameters.wet;
+    }
+    
+    console.log(`  Synced ${node.id} - decay: ${node.parameters.decay}s, wet: ${node.parameters.wet}, bypass: ${node.parameters.bypass}`);
 }
 
 /**
@@ -2327,11 +2515,21 @@ function syncEQ8Parameters(node, toneObject) {
         // Store connection state before modification
         console.log('🔧 EQ3 before sync - connected:', !!toneObject.eq3.input);
         
+        // Handle bypass - set all gains to 0 when bypassed
+        let actualLowGain, actualMidGain, actualHighGain;
+        if (node.parameters.bypass) {
+            actualLowGain = actualMidGain = actualHighGain = 0;
+        } else {
+            actualLowGain = lowGain;
+            actualMidGain = midGain;
+            actualHighGain = highGain;
+        }
+        
         // Safely set EQ3 parameters with validated values
         try {
-            toneObject.eq3.low.value = lowGain;
-            toneObject.eq3.mid.value = midGain;
-            toneObject.eq3.high.value = highGain;
+            toneObject.eq3.low.value = actualLowGain;
+            toneObject.eq3.mid.value = actualMidGain;
+            toneObject.eq3.high.value = actualHighGain;
             
             // Check if connection is still intact
             console.log('🔧 EQ3 after sync - connected:', !!toneObject.eq3.input);
@@ -2358,21 +2556,25 @@ function syncEQ8Parameters(node, toneObject) {
  */
 function syncMixerParameters(node, toneObject) {
     if (toneObject.inputGains) {
+        // Handle bypass - set all gains to 0 when bypassed
+        const effectiveMultiplier = node.parameters.bypass ? 0 : 1;
+        
         // Multi-input mixer
         Object.keys(node.parameters).forEach(key => {
             if (key.startsWith('channel') && key.endsWith('Gain')) {
                 const channelNumber = parseInt(key.replace('channel', '').replace('Gain', '')) - 1;
                 if (toneObject.inputGains[channelNumber]) {
-                    toneObject.inputGains[channelNumber].gain.value = node.parameters[key];
+                    toneObject.inputGains[channelNumber].gain.value = node.parameters[key] * effectiveMultiplier;
                 }
             }
         });
         
         if (node.parameters.masterGain !== undefined) {
-            toneObject.volume.value = Tone.gainToDb(node.parameters.masterGain);
+            const effectiveMasterGain = node.parameters.masterGain * effectiveMultiplier;
+            toneObject.volume.value = Tone.gainToDb(effectiveMasterGain);
         }
     }
-    console.log(`  Synced ${node.id} - mixer parameters`);
+    console.log(`  Synced ${node.id} - mixer parameters, bypass: ${node.parameters.bypass}`);
 }
 
 /**
@@ -2382,7 +2584,7 @@ function syncMixerParameters(node, toneObject) {
 function syncToneEngineLegacy(node) {
     if (node.id === "oscillator-1" && vco1ToneObject) {
         // Update Tone.js oscillator parameters from node data
-        vco1ToneObject.frequency.value = node.parameters.frequency;
+        vco1ToneObject.frequency.setValueAtTime(node.parameters.frequency, Tone.now());
         vco1ToneObject.type = node.parameters.waveform;
         vco1ToneObject.detune.value = node.parameters.detune;
 
@@ -2582,6 +2784,9 @@ function initializeModules() {
         
         // Setup envelope toggle buttons for original envelope
         setupEnvelopeToggles();
+        
+        // Setup bypass toggle buttons for all modules
+        setupBypassToggles();
     }
 }
 
@@ -2611,6 +2816,44 @@ function setupEnvelopeToggles() {
                 toggleBtn.dataset.value = targetNode.parameters.noteMode;
                 
                 console.log(`Envelope ${containerId} mode changed to: ${targetNode.parameters.noteMode ? 'NOTE' : 'GATE'}`);
+            } else {
+                console.error(`Could not find module node for ${containerId}`);
+            }
+        });
+    });
+}
+
+/**
+ * Setup bypass toggle button click handlers
+ */
+function setupBypassToggles() {
+    document.querySelectorAll('.bypass-toggle').forEach(toggleBtn => {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const container = toggleBtn.closest('.synth-module');
+            if (!container) {
+                console.error('Could not find module container for bypass toggle');
+                return;
+            }
+            const containerId = container.dataset.moduleId;
+            
+            // Get the module node
+            const targetNode = getModuleNodeById(containerId);
+            
+            if (targetNode) {
+                // Toggle bypass parameter
+                targetNode.parameters.bypass = !targetNode.parameters.bypass;
+                
+                // Update button text, dataset, and class
+                const bypassed = targetNode.parameters.bypass;
+                toggleBtn.textContent = bypassed ? 'BYP' : 'ON';
+                toggleBtn.dataset.value = bypassed;
+                toggleBtn.classList.toggle('bypassed', bypassed);
+                
+                console.log(`🔇 ${containerId} bypass: ${bypassed ? 'ON' : 'OFF'}`);
+                
+                // Update the Tone.js object to reflect bypass state
+                syncToneEngine(targetNode);
             } else {
                 console.error(`Could not find module node for ${containerId}`);
             }
@@ -3058,6 +3301,19 @@ function updateKnobVisuals(knob, param, value) {
             const normalized = (value + 12) / 24; // Convert -12 to +12 to 0 to 1
             rotation = -135 + (normalized * 270); // -135° to +135°
             displayText = `${value > 0 ? '+' : ''}${value}dB`;
+        } else if (param === 'volume') {
+            // Map noise volume (0 to 1) to rotation (-135° to +135°) linear scaling
+            const normalized = value; // Already 0 to 1
+            rotation = -135 + (normalized * 270); // -135° to +135°
+            displayText = `${Math.round(value * 100)}%`;
+        } else if (param === 'playbackRate') {
+            // Map playback rate (0.1x to 4.0x) to rotation (-135° to +135°) with logarithmic scaling
+            const logMin = Math.log(0.1);
+            const logMax = Math.log(4.0);
+            const logValue = Math.log(value);
+            const normalized = (logValue - logMin) / (logMax - logMin);
+            rotation = -135 + (normalized * 270); // -135° to +135°
+            displayText = `${value.toFixed(2)}x`;
         }
 
         // Apply rotation to indicator
@@ -3209,7 +3465,7 @@ function setupMultiplierInteraction() {
 function playKey(note) {
     if (vco1ToneObject && envelopeToneObject) {
         // Get base frequency from VCO knob setting
-        const baseFrequency = oscillatorNode.parameters.frequency;
+        const baseFrequency = getModuleNodeById('oscillator-1').parameters.frequency;
 
         // Convert note to frequency and calculate ratio
         const noteFrequency = Tone.Frequency(note).toFrequency();
@@ -3219,25 +3475,34 @@ function playKey(note) {
         // Apply the note ratio to the base frequency from the knob
         const finalFrequency = baseFrequency * ratio;
 
-        // Only change frequencies if envelope is in NOTE mode
-        if (window.envelopeNode?.parameters?.noteMode === true) {
-            // Set frequency for ALL oscillators using their individual base frequencies
-            // Original oscillator
-            if (vco1ToneObject) {
-                const oscBaseFreq = parseFloat(oscillatorNode?.parameters?.frequency) || 440;
-                const oscFinalFreq = oscBaseFreq * ratio;
-                vco1ToneObject.frequency.setValueAtTime(oscFinalFreq, Tone.now());
-            }
-            
-            // All dynamic oscillators
-            moduleInstances.forEach((moduleInstance, moduleId) => {
-                if (moduleInstance.node?.type === 'OmniOscillator' && moduleInstance.toneObject) {
+        // Set frequency for ALL oscillators using their individual base frequencies
+        // Original oscillator - only change frequency if envelope is in NOTE mode
+        const originalEnvelope = getModuleNodeById('envelope-1');
+        if (vco1ToneObject && originalEnvelope?.parameters?.noteMode === true) {
+            const oscBaseFreq = parseFloat(getModuleNodeById('oscillator-1').parameters.frequency) || 440;
+            const oscFinalFreq = oscBaseFreq * ratio;
+            vco1ToneObject.frequency.setValueAtTime(oscFinalFreq, Tone.now());
+        }
+        
+        // Dynamic oscillators - each one checks its own envelope's noteMode
+        moduleInstances.forEach((moduleInstance, moduleId) => {
+            if (moduleInstance.node?.type === 'OmniOscillator' && moduleInstance.toneObject) {
+                // Find this oscillator's connected envelope
+                let shouldChangeFreq = true; // default to NOTE mode behavior
+                moduleInstances.forEach((envInstance) => {
+                    if (envInstance.node?.type === 'AmplitudeEnvelope') {
+                        shouldChangeFreq = envInstance.node.parameters.noteMode === true;
+                        return; // use first envelope found for now
+                    }
+                });
+                
+                if (shouldChangeFreq) {
                     const oscBaseFreq = parseFloat(moduleInstance.node.parameters.frequency) || 440;
                     const oscFinalFreq = oscBaseFreq * ratio;
                     moduleInstance.toneObject.frequency.setValueAtTime(oscFinalFreq, Tone.now());
                 }
-            });
-        }
+            }
+        });
 
         // Trigger ALL envelopes in the system
         // Original envelope (both NOTE and GATE mode respond to keys)
@@ -3671,6 +3936,7 @@ function showModuleSelectionMenu() {
 function getModuleDisplayName(moduleType) {
     const displayNames = {
         'oscillator': 'VCO (OSCILLATOR)',
+        'noise': 'NOISE (GENERATOR)',
         'filter': 'VCF (FILTER)', 
         'envelope': 'ENV (ENVELOPE)',
         'lfo': 'LFO (MODULATOR)',
@@ -3706,13 +3972,16 @@ function addNewModule(moduleType) {
         // Initialize event listeners for the new module
         initializeNewModuleListeners(moduleInstance);
         
-        // Start oscillators and LFOs immediately (like original modules)
+        // Start oscillators, LFOs, and noise generators immediately (like original modules)
         if (moduleType === 'oscillator' && moduleInstance.toneObject) {
             moduleInstance.toneObject.start();
             console.log(`🎵 Started ${newId} oscillator`);
         } else if (moduleType === 'lfo' && moduleInstance.toneObject) {
             moduleInstance.toneObject.start();
             console.log(`🎵 Started ${newId} LFO`);
+        } else if (moduleType === 'noise' && moduleInstance.toneObject) {
+            // Noise is already started in toneFactory to avoid timing conflicts
+            console.log(`🔊 ${newId} noise generator ready (started in factory)`);
         }
         
         // Update code display
@@ -3786,7 +4055,7 @@ function initializeNewModuleListeners(moduleInstance) {
             });
             
             // Initialize selectors (waveform/type dropdowns)
-            const newSelectors = moduleElement.querySelectorAll('.waveform-selector, .filter-type-selector');
+            const newSelectors = moduleElement.querySelectorAll('.waveform-selector, .filter-type-selector, .noise-type-selector, .lfo-type-selector');
             console.log(`🎛️ Found ${newSelectors.length} selectors`);
             newSelectors.forEach(selector => {
                 setupSingleSelectorInteraction(selector);
@@ -3808,6 +4077,32 @@ function initializeNewModuleListeners(moduleInstance) {
                         envToggle.dataset.value = targetNode.parameters.noteMode;
                         
                         console.log(`🎛️ ${moduleId} note mode: ${targetNode.parameters.noteMode ? 'NOTE' : 'GATE'}`);
+                    }
+                });
+            }
+            
+            // Initialize bypass toggle buttons
+            const bypassToggle = moduleElement.querySelector('.bypass-toggle');
+            if (bypassToggle) {
+                bypassToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const moduleId = moduleElement.dataset.moduleId;
+                    const targetNode = getModuleNodeById(moduleId);
+                    
+                    if (targetNode) {
+                        // Toggle bypass parameter
+                        targetNode.parameters.bypass = !targetNode.parameters.bypass;
+                        
+                        // Update button display and class
+                        const bypassed = targetNode.parameters.bypass;
+                        bypassToggle.textContent = bypassed ? 'BYP' : 'ON';
+                        bypassToggle.dataset.value = bypassed;
+                        bypassToggle.classList.toggle('bypassed', bypassed);
+                        
+                        console.log(`🔇 ${moduleId} bypass: ${bypassed ? 'ON' : 'OFF'}`);
+                        
+                        // Update the Tone.js object to reflect bypass state
+                        syncToneEngine(targetNode);
                     }
                 });
             }
@@ -3899,6 +4194,17 @@ function setupSingleKnobInteraction(knob) {
             const sensitivity = 0.01;
             newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
             newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+        } else if (param === 'volume') {
+            // Volume level: 0.0 to 1.0 linear scaling (for noise generator)
+            const sensitivity = 0.01;
+            newValue = Math.max(0, Math.min(1, startValue + (deltaY * sensitivity)));
+            newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
+        } else if (param === 'playbackRate') {
+            // Playback rate: 0.1x to 4.0x with logarithmic scaling
+            const sensitivity = 1.5;
+            const multiplier = Math.pow(2, deltaY / (100 / sensitivity));
+            newValue = Math.max(0.1, Math.min(4.0, startValue * multiplier));
+            newValue = Math.round(newValue * 100) / 100; // Round to 2 decimals
         }
         
         // Update the module data and UI
@@ -3910,6 +4216,11 @@ function setupSingleKnobInteraction(knob) {
     const handleMouseUp = () => {
         if (isDragging) {
             console.log(`🎛️ Knob drag ended: ${param}`);
+            if (param === 'frequency') {
+                console.log('🎛️ FREQUENCY KNOB RELEASED - current knob value:', knob.dataset.value);
+                const currentNode = getModuleNodeById(knob.closest('.synth-module').dataset.moduleId);
+                console.log('🎛️ FREQUENCY KNOB RELEASED - node frequency:', currentNode?.parameters?.frequency);
+            }
             isDragging = false;
             knob.style.cursor = '';
         }

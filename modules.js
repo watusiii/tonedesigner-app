@@ -102,16 +102,21 @@ const OscillatorModule = {
         parameters: {
             waveform: "sine",
             frequency: 440,
-            detune: 0
+            detune: 0,
+            bypass: false
         }
     },
     
     toneFactory: (params) => {
-        return new Tone.Oscillator({
+        const oscillator = new Tone.Oscillator({
             frequency: params.frequency,
             type: params.waveform,
             detune: params.detune
         });
+        
+        // Bypass will be handled dynamically by syncToneEngine
+        
+        return oscillator;
     },
     
     renderFunction: (oscillatorData) => {
@@ -124,6 +129,11 @@ const OscillatorModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">VCO-1</h3>
+                    <button class="bypass-toggle ${oscillatorData.parameters.bypass ? 'bypassed' : ''}" 
+                            data-param="bypass" 
+                            data-value="${oscillatorData.parameters.bypass}">
+                        ${oscillatorData.parameters.bypass ? 'BYP' : 'ON'}
+                    </button>
                 </div>
                 
                 <div class="module-controls">
@@ -163,6 +173,93 @@ ModuleFactory.register('oscillator', OscillatorModule);
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
+ * NOISE GENERATOR MODULE DEFINITION
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Noise Generator Module - Noise Source
+ * Generates white, pink, and brown noise for percussive and textural sounds
+ */
+const NoiseModule = {
+    nodeConfig: {
+        type: "Noise",
+        parameters: {
+            type: "white",     // white, pink, brown
+            volume: 0.5,       // Output volume (0-1)
+            playbackRate: 1.0, // Playback rate for brown noise
+            bypass: false
+        }
+    },
+    
+    toneFactory: (params) => {
+        const noise = new Tone.Noise({
+            type: params.type,
+            volume: Tone.gainToDb(params.volume),
+            playbackRate: params.playbackRate
+        });
+        
+        // Start immediately to avoid timing conflicts
+        noise.start();
+        
+        // Bypass will be handled dynamically by syncToneEngine
+        
+        return noise;
+    },
+    
+    renderFunction: (noiseData) => {
+        return `
+            <div class="synth-module" data-module-id="${noiseData.id}">
+                <div class="corner-port-output">
+                    <div class="patch-port audio-output" data-port-type="audio-out" data-signal="audio"></div>
+                    <span class="corner-port-label">OUT</span>
+                </div>
+                
+                <div class="module-header">
+                    <h3 class="module-title">NOISE-1</h3>
+                    <button class="bypass-toggle ${noiseData.parameters.bypass ? 'bypassed' : ''}" 
+                            data-param="bypass" 
+                            data-value="${noiseData.parameters.bypass}">
+                        ${noiseData.parameters.bypass ? 'BYP' : 'ON'}
+                    </button>
+                </div>
+                
+                <div class="module-controls">
+                    <div class="control-group">
+                        <select class="noise-type-selector" data-param="type">
+                            <option value="white" ${noiseData.parameters.type === 'white' ? 'selected' : ''}>WHITE</option>
+                            <option value="pink" ${noiseData.parameters.type === 'pink' ? 'selected' : ''}>PINK</option>
+                            <option value="brown" ${noiseData.parameters.type === 'brown' ? 'selected' : ''}>BROWN</option>
+                        </select>
+                        <div class="wave-visual" data-wave-type="${noiseData.parameters.type}-noise"></div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">VOLUME</label>
+                        <div class="synth-knob" data-param="volume" data-value="${noiseData.parameters.volume}">
+                            <div class="knob-indicator"></div>
+                        </div>
+                        <span class="control-value">${Math.round(noiseData.parameters.volume * 100)}%</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label class="control-label">RATE</label>
+                        <div class="synth-knob" data-param="playbackRate" data-value="${noiseData.parameters.playbackRate}">
+                            <div class="knob-indicator"></div>
+                        </div>
+                        <span class="control-value">${noiseData.parameters.playbackRate.toFixed(2)}x</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+};
+
+// Register the noise module
+ModuleFactory.register('noise', NoiseModule);
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
  * FILTER MODULE DEFINITION
  * ═══════════════════════════════════════════════════════════════════════════════
  */
@@ -177,16 +274,21 @@ const FilterModule = {
         parameters: {
             type: "lowpass",
             frequency: 8000,
-            Q: 1
+            Q: 1,
+            bypass: false
         }
     },
     
     toneFactory: (params) => {
-        return new Tone.Filter({
+        const filter = new Tone.Filter({
             frequency: params.frequency,
             type: params.type,
             Q: params.Q
         });
+        
+        // Bypass will be handled dynamically by syncToneEngine
+        
+        return filter;
     },
     
     renderFunction: (filterData) => {
@@ -204,6 +306,11 @@ const FilterModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">VCF-1</h3>
+                    <button class="bypass-toggle ${filterData.parameters.bypass ? 'bypassed' : ''}" 
+                            data-param="bypass" 
+                            data-value="${filterData.parameters.bypass}">
+                        ${filterData.parameters.bypass ? 'BYP' : 'ON'}
+                    </button>
                 </div>
                 
                 <div class="module-controls">
@@ -263,17 +370,22 @@ const EnvelopeModule = {
             decay: 0.2,
             sustain: 0.5,
             release: 1.0,
-            noteMode: true  // true = musical notes, false = gate only
+            noteMode: true,  // true = musical notes, false = gate only
+            bypass: false
         }
     },
     
     toneFactory: (params) => {
-        return new Tone.AmplitudeEnvelope({
+        const envelope = new Tone.AmplitudeEnvelope({
             attack: params.attack,
             decay: params.decay,
             sustain: params.sustain,
             release: params.release
         });
+        
+        // Bypass will be handled dynamically by syncToneEngine
+        
+        return envelope;
     },
     
     renderFunction: (envelopeData) => {
@@ -296,9 +408,16 @@ const EnvelopeModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">ENV/VCA-1</h3>
-                    <button class="env-mode-toggle" data-param="noteMode" data-value="${envelopeData.parameters.noteMode}">
-                        ${envelopeData.parameters.noteMode ? 'NOTE' : 'GATE'}
-                    </button>
+                    <div class="module-header-controls">
+                        <button class="env-mode-toggle" data-param="noteMode" data-value="${envelopeData.parameters.noteMode}">
+                            ${envelopeData.parameters.noteMode ? 'NOTE' : 'GATE'}
+                        </button>
+                        <button class="bypass-toggle ${envelopeData.parameters.bypass ? 'bypassed' : ''}" 
+                                data-param="bypass" 
+                                data-value="${envelopeData.parameters.bypass}">
+                            ${envelopeData.parameters.bypass ? 'BYP' : 'ON'}
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="module-controls envelope-controls">
@@ -366,17 +485,22 @@ const LFOModule = {
             type: "sine",      // Waveform of control signal
             min: 200,          // Minimum filter frequency
             max: 5000,         // Maximum filter frequency
-            multiplier: 1      // Frequency multiplier (1x or 10x)
+            multiplier: 1,     // Frequency multiplier (1x or 10x)
+            bypass: false
         }
     },
     
     toneFactory: (params) => {
-        return new Tone.LFO({
+        const lfo = new Tone.LFO({
             frequency: params.frequency,
             type: params.type,
             min: params.min,
             max: params.max
         });
+        
+        // Bypass will be handled dynamically by syncToneEngine
+        
+        return lfo;
     },
     
     renderFunction: (lfoData) => {
@@ -384,6 +508,11 @@ const LFOModule = {
             <div class="synth-module" data-module-id="${lfoData.id}">
                 <div class="module-header">
                     <h3 class="module-title">LFO-1</h3>
+                    <button class="bypass-toggle ${lfoData.parameters.bypass ? 'bypassed' : ''}" 
+                            data-param="bypass" 
+                            data-value="${lfoData.parameters.bypass}">
+                        ${lfoData.parameters.bypass ? 'BYP' : 'ON'}
+                    </button>
                 </div>
                 
                 <div class="module-controls">
@@ -454,15 +583,20 @@ const ReverbModule = {
         type: "Reverb",
         parameters: {
             decay: 1.5,        // Length of reverb tail in seconds
-            wet: 0.5           // Mix level (0 = dry, 1 = wet)
+            wet: 0.5,          // Mix level (0 = dry, 1 = wet)
+            bypass: false
         }
     },
     
     toneFactory: (params) => {
-        return new Tone.Reverb({
+        const reverb = new Tone.Reverb({
             decay: params.decay,
             wet: params.wet
         });
+        
+        // Bypass will be handled dynamically by syncToneEngine
+        
+        return reverb;
     },
     
     renderFunction: (reverbData) => {
@@ -480,6 +614,11 @@ const ReverbModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">REVERB-1</h3>
+                    <button class="bypass-toggle ${reverbData.parameters.bypass ? 'bypassed' : ''}" 
+                            data-param="bypass" 
+                            data-value="${reverbData.parameters.bypass}">
+                        ${reverbData.parameters.bypass ? 'BYP' : 'ON'}
+                    </button>
                 </div>
                 
                 <div class="module-controls">
@@ -533,7 +672,8 @@ const EQ8Module = {
             band6Gain: 0,     // 7kHz
             band7Gain: 0,     // 10kHz
             band8Gain: 0,     // 15kHz
-            masterGain: 1.0
+            masterGain: 1.0,
+            bypass: false
         }
     },
     
@@ -624,6 +764,11 @@ const EQ8Module = {
                 
                 <div class="module-header">
                     <div class="module-title">EQ8</div>
+                    <button class="bypass-toggle ${eqData.parameters.bypass ? 'bypassed' : ''}" 
+                            data-param="bypass" 
+                            data-value="${eqData.parameters.bypass}">
+                        ${eqData.parameters.bypass ? 'BYP' : 'ON'}
+                    </button>
                 </div>
                 
                 <div class="module-controls eq8-controls">
@@ -666,7 +811,8 @@ const MixerModule = {
             channel6Gain: 0.7,
             channel7Gain: 0.7,
             channel8Gain: 0.7,
-            masterGain: 0.8
+            masterGain: 0.8,
+            bypass: false
         }
     },
     
@@ -722,6 +868,11 @@ const MixerModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">MIXER-1</h3>
+                    <button class="bypass-toggle ${mixerData.parameters.bypass ? 'bypassed' : ''}" 
+                            data-param="bypass" 
+                            data-value="${mixerData.parameters.bypass}">
+                        ${mixerData.parameters.bypass ? 'BYP' : 'ON'}
+                    </button>
                 </div>
                 
                 <div class="module-controls mixer-controls">
@@ -818,6 +969,20 @@ function generateOscillatorCode(node) {
 }
 
 /**
+ * Noise Generator Code Generator
+ */
+function generateNoiseCode(node) {
+    const id = node.id.replace('-', '');
+    return `const ${id} = new Tone.Noise({
+    type: "${node.parameters.type}",
+    volume: ${Tone.gainToDb(node.parameters.volume)},
+    playbackRate: ${node.parameters.playbackRate}
+}).start();
+
+`;
+}
+
+/**
  * Filter Code Generator
  */
 function generateFilterCode(node) {
@@ -902,6 +1067,7 @@ function generateMixerCode(node) {
 
 // Register all code generators
 CodeGeneratorFactory.register('OmniOscillator', generateOscillatorCode);
+CodeGeneratorFactory.register('Noise', generateNoiseCode);
 CodeGeneratorFactory.register('Filter', generateFilterCode);
 CodeGeneratorFactory.register('AmplitudeEnvelope', generateEnvelopeCode);
 CodeGeneratorFactory.register('LFO', generateLFOCode);

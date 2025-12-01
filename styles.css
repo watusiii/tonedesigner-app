@@ -1068,7 +1068,8 @@ header h1 {
 /* Golden ratio and full bleed only for dropdown/canvas containers */
 .control-group:has(.waveform-selector),
 .control-group:has(.filter-type-selector),
-.control-group:has(.lfo-type-selector) {
+.control-group:has(.lfo-type-selector),
+.control-group:has(.noise-type-selector) {
     padding: 0;
     /* Full bleed for selector containers */
     align-items: stretch;
@@ -1244,6 +1245,32 @@ header h1 {
     border-color: var(--color-accent-primary);
 }
 
+/* Noise Type Selector - Same styling as other selectors */
+.noise-type-selector {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    background-color: var(--color-gray-100);
+    border: none;
+    /* Full bleed - no borders */
+    border-radius: 0;
+    /* Full bleed - no radius */
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-text-primary);
+    width: 100%;
+    flex: 0 0 auto;
+    /* Don't grow, fixed size for dropdown */
+    text-align: center;
+    cursor: pointer;
+    margin: 0;
+    /* Full bleed - no margins */
+}
+
+.noise-type-selector:focus {
+    outline: none;
+    border-color: var(--color-accent-primary);
+}
+
 /* Wave Visual Display - P5.js canvas container */
 .wave-visual {
     width: 100%;
@@ -1299,7 +1326,8 @@ header h1 {
     height: 12px;
     background-color: var(--color-te-orange-dark);
     border-radius: var(--border-radius-sm);
-    transform-origin: center 18px;
+    transform-origin: 50% 20px;
+    /* Set rotation origin to center of 48px knob (24px - 4px top offset) */
 }
 
 /* Filter Knob Styling - Cyan/Blue for visual distinction */
@@ -1791,4 +1819,42 @@ header h1 {
 
 .env-mode-toggle:hover {
     background: #444;
+}
+
+/* Bypass toggle button */
+.bypass-toggle {
+    background: var(--color-te-green);
+    color: var(--color-pure-white);
+    border: 1px solid var(--color-te-green-dark);
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-left: 8px;
+    min-width: 28px;
+    transition: all 0.2s ease;
+}
+
+.bypass-toggle:hover {
+    background: var(--color-te-green-dark);
+    border-color: var(--color-te-green);
+}
+
+.bypass-toggle.bypassed {
+    background: var(--color-te-red);
+    border-color: var(--color-te-red-dark);
+    color: var(--color-pure-white);
+}
+
+.bypass-toggle.bypassed:hover {
+    background: var(--color-te-red-dark);
+    border-color: var(--color-te-red);
+}
+
+/* Module header controls container for modules with multiple buttons */
+.module-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
