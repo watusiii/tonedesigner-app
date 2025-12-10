@@ -1,0 +1,77 @@
+await Tone.start();
+
+// ═══════════════════════════════════════════════════════════════
+// INSTANTIATION BLOCK - Module Declarations  
+// ═══════════════════════════════════════════════════════════════
+
+const oscillator1 = new Tone.Oscillator({
+    type: "square",
+    frequency: 5919.9,
+    detune: 0
+}).start();
+
+const filter1 = new Tone.Filter({
+    type: "lowpass",
+    frequency: 8000,
+    Q: 1
+});
+
+const envelope1 = new Tone.AmplitudeEnvelope({
+    attack: 0.01,
+    decay: 0.2,
+    sustain: 0.5,
+    release: 1
+});
+
+const lfo1 = new Tone.LFO({
+    type: "sine",
+    frequency: 7.89,
+    min: 200,
+    max: 5000
+}).start();
+
+const reverb1 = new Tone.Reverb({
+    decay: 1.5,
+    wet: 0.5
+});
+
+const eq81 = new Tone.EQ3({
+    low: 0,
+    mid: 0,
+    high: 0
+});
+
+const mixer1 = new Tone.Channel({
+    volume: 0
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PATCHING BLOCK - Signal Routing (DYNAMIC)
+// ═══════════════════════════════════════════════════════════════
+
+oscillator1.connect(filter1);
+filter1.connect(envelope1);
+envelope1.connect(reverb1);
+reverb1.connect(eq81);
+eq81.connect(mixer1);
+mixer1.toDestination();
+lfo1.connect(filter1.frequency);
+
+// ═══════════════════════════════════════════════════════════════
+// TRIGGERING BLOCK - Play Function (DYNAMIC)
+// ═══════════════════════════════════════════════════════════════
+
+const playSynth = (note = "C4", duration = "4n") => {
+    // Set oscillator frequency to the desired note
+    oscillator1.frequency.setValueAtTime(Tone.Frequency(note).toFrequency(), Tone.now());
+    
+    // Trigger the envelope to play the note
+    envelope1.triggerAttackRelease(duration, Tone.now());
+};
+
+// Example usage:
+// playSynth("C4", "8n");  // Play C4 for an eighth note
+// playSynth("A3", "2n");  // Play A3 for a half note
+
+// Your Tone Designer patch is ready!
+console.log("🎛️ Synthesizer loaded and ready");

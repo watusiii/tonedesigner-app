@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple ToneDesigner Test</title>
+    <script src="https://unpkg.com/tone@latest/build/Tone.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .keyboard-container {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .virtual-keyboard {
+            position: relative;
+            height: 120px;
+            width: 400px;
+            margin: 20px auto;
+        }
+
+        .key {
+            position: absolute;
+            border: 2px solid #000;
+            cursor: pointer;
+            display: flex;
+            align-items: end;
+            justify-content: center;
+            padding-bottom: 5px;
+            font-weight: bold;
+            user-select: none;
+        }
+
+        .white-key {
+            background: white;
+            height: 120px;
+            width: 48px;
+            border-radius: 0 0 5px 5px;
+        }
+
+        .white-key:nth-child(1) {
+            left: 0px;
+        }
+
+        .white-key:nth-child(2) {
+            left: 50px;
+        }
+
+        .white-key:nth-child(3) {
+            left: 100px;
+        }
+
+        .white-key:nth-child(4) {
+            left: 150px;
+        }
+
+        .white-key:nth-child(5) {
+            left: 200px;
+        }
+
+        .white-key:nth-child(6) {
+            left: 250px;
+        }
+
+        .white-key:nth-child(7) {
+            left: 300px;
+        }
+
+        .white-key:nth-child(8) {
+            left: 350px;
+        }
+
+        .black-key {
+            background: #000;
+            color: white;
+            height: 80px;
+            width: 30px;
+            z-index: 2;
+            border-radius: 0 0 3px 3px;
+            font-size: 10px;
+        }
+
+        .black-key:nth-child(9) {
+            left: 35px;
+        }
+
+        /* C# */
+        .black-key:nth-child(10) {
+            left: 85px;
+        }
+
+        /* D# */
+        .black-key:nth-child(11) {
+            left: 185px;
+        }
+
+        /* F# */
+        .black-key:nth-child(12) {
+            left: 235px;
+        }
+
+        /* G# */
+        .black-key:nth-child(13) {
+            left: 285px;
+        }
+
+        /* A# */
+
+        .key:hover {
+            opacity: 0.8;
+        }
+
+        .key.pressed {
+            background: #4CAF50 !important;
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Simple ToneDesigner Test</h1>
+    <button id="testBtn">Test ToneDesigner Code</button>
+    <button id="stopBtn">Stop</button>
+
+    <div class="keyboard-container">
+        <h3>ToneDesigner Keyboard (click keys to test)</h3>
+        <div class="virtual-keyboard">
+            <div class="key white-key" data-note="C3">C3</div>
+            <div class="key white-key" data-note="D3">D3</div>
+            <div class="key white-key" data-note="E3">E3</div>
+            <div class="key white-key" data-note="F3">F3</div>
+            <div class="key white-key" data-note="G3">G3</div>
+            <div class="key white-key" data-note="A3">A3</div>
+            <div class="key white-key" data-note="B3">B3</div>
+            <div class="key white-key" data-note="C4">C4</div>
+
+            <!-- Black keys positioned with right edge at white key boundaries -->
+            <div class="key black-key" data-note="C#3">C#3</div>
+            <div class="key black-key" data-note="D#3">D#3</div>
+            <div class="key black-key" data-note="F#3">F#3</div>
+            <div class="key black-key" data-note="G#3">G#3</div>
+            <div class="key black-key" data-note="A#3">A#3</div>
+        </div>
+    </div>
+
+    <script>
+        let synthObjects = {};
+
+        async function testToneDesignerCode() {
+            await Tone.start();
+
+            // ═══════════════════════════════════════════════════════════════
+            // INSTANTIATION BLOCK - Module Declarations  
+            // ═══════════════════════════════════════════════════════════════
+
+            const oscillator1 = new Tone.Oscillator({
+                type: "square",
+                frequency: 725.9,
+                detune: 0
+            }).start();
+
+            const filter1 = new Tone.Filter({
+                type: "lowpass",
+                frequency: 8000,
+                Q: 1
+            });
+
+            const envelope1 = new Tone.AmplitudeEnvelope({
+                attack: 0.01,
+                decay: 0.2,
+                sustain: 0.5,
+                release: 1
+            });
+
+            const lfo1 = new Tone.LFO({
+                type: "sine",
+                frequency: 1,
+                min: 200,
+                max: 5000
+            }).start();
+
+            const reverb1 = new Tone.Reverb({
+                decay: 1.5,
+                wet: 0.5
+            });
+
+            const eq81 = new Tone.EQ3({
+                low: 0,
+                mid: 0,
+                high: 0
+            });
+
+            const mixer1 = new Tone.Channel({
+                volume: -1.938200260161128
+            });
+
+            // ═══════════════════════════════════════════════════════════════
+            // PATCHING BLOCK - Signal Routing (DYNAMIC)
+            // ═══════════════════════════════════════════════════════════════
+
+            oscillator1.connect(filter1);
+            filter1.connect(envelope1);
+            envelope1.connect(reverb1);
+            reverb1.connect(eq81);
+            eq81.connect(mixer1);
+            mixer1.toDestination();
+            lfo1.connect(filter1.frequency);
+
+
+            // Your Tone Designer patch is ready!
+            console.log("🎛️ Synthesizer loaded and ready");
+
+            // Store the original oscillator frequency for ToneDesigner's keyboard logic
+            const originalOscFrequency = oscillator1.frequency.value;
+            console.log(`📢 Base oscillator frequency detected: ${originalOscFrequency}Hz`);
+
+            // Add playSynth function for keyboard functionality using ToneDesigner's logic
+            const playSynth = (note = "C4", duration = "4n") => {
+                // ToneDesigner's frequency calculation logic:
+                // Get base frequency from oscillator's initial setting (what the knob was set to)
+                const baseFrequency = originalOscFrequency;
+
+                // Convert note to frequency - treat knob frequency as the C4 reference  
+                const noteFrequency = Tone.Frequency(note).toFrequency();
+                const C4Frequency = Tone.Frequency("C4").toFrequency(); // 261.63 Hz
+                const ratio = noteFrequency / C4Frequency;
+
+                // Apply the note ratio to the base frequency from the knob
+                const finalFrequency = baseFrequency * ratio;
+
+                console.log(`🎹 ToneDesigner logic: ${note} = ${baseFrequency}Hz × ${ratio.toFixed(3)} = ${finalFrequency.toFixed(1)}Hz`);
+
+                // Set calculated frequency and trigger envelope
+                oscillator1.frequency.setValueAtTime(finalFrequency, Tone.now());
+                envelope1.triggerAttackRelease(duration, Tone.now());
+            };
+
+            // Store objects for keyboard and cleanup
+            synthObjects = { oscillator1, filter1, envelope1, lfo1, reverb1, eq81, mixer1, playSynth };
+
+            console.log("Keyboard should work now - synthObjects:", Object.keys(synthObjects));
+
+
+
+
+            // Test the sound - try different notes to match ToneDesigner
+            setTimeout(() => {
+                console.log('Playing test note C4 (default)...');
+                playSynth("C3", "2n");
+
+                // Also test the first C note (C3) which might be what you're pressing
+                setTimeout(() => {
+                    console.log('Playing test note C3 (first C)...');
+                    playSynth("C3", "2n");
+                }, 2500);
+            }, 500);
+
+            return synthObjects;
+        }
+
+        function stopAll() {
+            Object.values(synthObjects).forEach(obj => {
+                if (obj && typeof obj.stop === 'function') {
+                    obj.stop();
+                }
+                if (obj && typeof obj.dispose === 'function') {
+                    obj.dispose();
+                }
+            });
+            synthObjects = {};
+            console.log('All audio stopped and disposed');
+        }
+
+        // Setup keyboard functionality  
+        function setupKeyboard() {
+            const keys = document.querySelectorAll('.key');
+            keys.forEach(key => {
+                key.addEventListener('click', () => {
+                    const note = key.dataset.note;
+                    // Check if playSynth function exists globally (from latest code paste)
+                    if (typeof playSynth === 'function') {
+                        console.log(`Playing note: ${note}`);
+                        key.classList.add('pressed');
+                        playSynth(note, "4n");
+
+                        // Remove pressed visual after a short time
+                        setTimeout(() => {
+                            key.classList.remove('pressed');
+                        }, 200);
+                    } else if (synthObjects && synthObjects.playSynth) {
+                        console.log(`Playing note: ${note}`);
+                        key.classList.add('pressed');
+                        synthObjects.playSynth(note, "4n");
+
+                        // Remove pressed visual after a short time
+                        setTimeout(() => {
+                            key.classList.remove('pressed');
+                        }, 200);
+                    } else {
+                        alert('Please click "Test ToneDesigner Code" first to load the synth!');
+                    }
+                });
+            });
+        }
+
+        document.getElementById('testBtn').addEventListener('click', testToneDesignerCode);
+        document.getElementById('stopBtn').addEventListener('click', stopAll);
+
+        // Initialize keyboard when page loads
+        setupKeyboard();
+    </script>
+</body>
+
+</html>

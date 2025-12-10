@@ -156,7 +156,7 @@ async function setupSynth() {
         initializeMenu();
 
         // Initialize global synth nodes array
-        synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode, mixerNode];
+        synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode, eq8Node, mixerNode];
 
         // Initial sync to ensure Tone.js objects match data structures
         syncToneEngine(oscillatorNode);
@@ -3721,49 +3721,9 @@ function generateCode() {
         code += `// No patch connections found\n\n`;
     }
 
-    // DYNAMIC TRIGGERING - Generate play function based on available modules
-    code += `// ═══════════════════════════════════════════════════════════════
-// TRIGGERING BLOCK - Play Function (DYNAMIC)
-// ═══════════════════════════════════════════════════════════════
+    // Pure synthesis setup complete - no triggering logic exported
 
-`;
 
-    // Find the first oscillator and envelope for the play function
-    const oscillatorNode = synthNodes.find(node => node.type === "OmniOscillator");
-    const envelopeNode = synthNodes.find(node => node.type === "AmplitudeEnvelope");
-
-    if (oscillatorNode && envelopeNode) {
-        const oscId = oscillatorNode.id.replace('-', '');
-        const envId = envelopeNode.id.replace('-', '');
-        
-        code += `const playSynth = (note = "C4", duration = "4n") => {
-    // Set oscillator frequency to the desired note
-    ${oscId}.frequency.setValueAtTime(Tone.Frequency(note).toFrequency(), Tone.now());
-    
-    // Trigger the envelope to play the note
-    ${envId}.triggerAttackRelease(duration, Tone.now());
-};
-
-// Example usage:
-// playSynth("C4", "8n");  // Play C4 for an eighth note
-// playSynth("A3", "2n");  // Play A3 for a half note
-`;
-    } else if (oscillatorNode) {
-        const oscId = oscillatorNode.id.replace('-', '');
-        code += `const playSynth = (note = "C4") => {
-    // Set oscillator frequency and play (no envelope found)
-    ${oscId}.frequency.setValueAtTime(Tone.Frequency(note).toFrequency(), Tone.now());
-    // Note: No envelope found for triggering
-};
-
-// Example usage:
-// playSynth("C4");  // Set frequency to C4
-`;
-    } else {
-        code += `// No oscillator found - cannot generate play function
-// Your patch may be for effects processing or other purposes
-`;
-    }
 
     code += `
 // Your Tone Designer patch is ready!

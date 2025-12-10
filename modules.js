@@ -1016,9 +1016,12 @@ function generateEnvelopeCode(node) {
  */
 function generateLFOCode(node) {
     const id = node.id.replace('-', '');
+    const multiplier = node.parameters.multiplier || 1;
+    const effectiveFreq = node.parameters.frequency * multiplier;
+    
     return `const ${id} = new Tone.LFO({
     type: "${node.parameters.type}",
-    frequency: ${node.parameters.frequency},
+    frequency: ${effectiveFreq},
     min: ${node.parameters.min},
     max: ${node.parameters.max}
 }).start();
@@ -1045,9 +1048,9 @@ function generateReverbCode(node) {
 function generateEQ8Code(node) {
     const id = node.id.replace('-', '');
     return `const ${id} = new Tone.EQ3({
-    low: ${node.parameters.low},
-    mid: ${node.parameters.mid},
-    high: ${node.parameters.high}
+    low: ${node.parameters.low || 0},
+    mid: ${node.parameters.mid || 0},
+    high: ${node.parameters.high || 0}
 });
 
 `;
@@ -1058,8 +1061,11 @@ function generateEQ8Code(node) {
  */
 function generateMixerCode(node) {
     const id = node.id.replace('-', '');
+    const masterGain = node.parameters.masterGain || 1.0;
+    const volumeDb = masterGain === 0 ? -Infinity : (20 * Math.log10(masterGain));
+    
     return `const ${id} = new Tone.Channel({
-    volume: ${node.parameters.volume}
+    volume: ${volumeDb}
 });
 
 `;
@@ -1073,6 +1079,7 @@ CodeGeneratorFactory.register('AmplitudeEnvelope', generateEnvelopeCode);
 CodeGeneratorFactory.register('LFO', generateLFOCode);
 CodeGeneratorFactory.register('Reverb', generateReverbCode);
 CodeGeneratorFactory.register('EQ3', generateEQ8Code);
+CodeGeneratorFactory.register('EQ8', generateEQ8Code);
 CodeGeneratorFactory.register('Channel', generateMixerCode);
 CodeGeneratorFactory.register('Mixer', generateMixerCode); // Add missing Mixer type
 
