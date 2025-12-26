@@ -152,8 +152,6 @@ async function setupSynth() {
         vco1ToneObject.start();
         lfoToneObject.start();
 
-        // Initialize menu toggle functionality
-        initializeMenu();
 
         // Initialize global synth nodes array
         synthNodes = [oscillatorNode, filterNode, envelopeNode, lfoNode, reverbNode, eq8Node, mixerNode];
@@ -3812,40 +3810,6 @@ function exportCode() {
 }
 
 
-/**
- * Initialize menu toggle functionality
- */
-function initializeMenu() {
-    const menuButton = document.getElementById('menu-button');
-    const slideMenu = document.getElementById('slide-menu');
-    const header = document.querySelector('header');
-
-    if (menuButton && slideMenu && header) {
-        // Set menu position dynamically based on actual header height
-        const updateMenuPosition = () => {
-            const headerHeight = header.getBoundingClientRect().height;
-            slideMenu.style.top = `${headerHeight}px`;
-        };
-
-        // Update position on load and resize
-        updateMenuPosition();
-        window.addEventListener('resize', updateMenuPosition);
-
-        menuButton.addEventListener('click', () => {
-            slideMenu.classList.toggle('open');
-            console.log('🍔 Menu toggled:', slideMenu.classList.contains('open') ? 'open' : 'closed');
-        });
-
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!menuButton.contains(e.target) && !slideMenu.contains(e.target)) {
-                slideMenu.classList.remove('open');
-            }
-        });
-
-        console.log('🍔 Menu system initialized');
-    }
-}
 
 /**
  * Initialize add module button functionality

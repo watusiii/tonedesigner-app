@@ -253,23 +253,34 @@ body {
 /* Base Typography and Body Styling */
 body {
     font-family: var(--font-family-mono);
-    background-color: var(--color-pure-white);
-    background-image: radial-gradient(circle, var(--color-pure-black) 1px, transparent 1px);
-    background-size: var(--grid-size) var(--grid-size);
+    background-color: var(--color-gray-300);
     line-height: var(--line-height-normal);
     color: var(--color-text-primary);
     height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* Main container with max-width and centered layout */
+.site-container {
+    max-width: 500px;
+    margin: 0 auto;
+    background-color: var(--color-pure-white);
+    background-image: radial-gradient(circle, var(--color-pure-black) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     padding-bottom: 20px;
     /* Push content up for footer */
 }
 
-/* Header Styling - Module-like design */
+/* Header Styling - Module-like design with synth top panel feel */
 header {
     background-color: var(--color-pure-white);
     color: var(--color-text-primary);
-    padding: var(--space-4);
+    padding: var(--space-8) var(--space-4);
+    /* Increased vertical padding for synth-like height */
     margin: 0;
     border: var(--border-width-thin) solid var(--color-border-medium);
     border-bottom-width: var(--border-width-base);
@@ -277,11 +288,12 @@ header {
     border-radius: 0;
     /* No radius for full width */
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
     position: relative;
     z-index: 6000;
-    /* Above menu */
+    min-height: 80px;
+    /* Ensure consistent height like physical synth panel */
 }
 
 header h1 {
@@ -292,72 +304,32 @@ header h1 {
     margin: 0;
 }
 
-/* Menu Button - T.E. Style */
-.menu-button {
-    position: absolute;
-    right: var(--space-4);
-    background-color: var(--color-pure-white);
-    color: var(--color-pure-black);
-    border: var(--border-width-thin) solid var(--color-pure-black);
+/* Header Navigation */
+.header-nav {
+    display: flex;
+    gap: var(--space-6);
+    align-items: center;
+}
+
+.nav-item {
     font-family: var(--font-family-mono);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
     letter-spacing: var(--letter-spacing-wide);
-    padding: var(--space-2) var(--space-3);
+    color: var(--color-pure-black);
+    text-decoration: none;
     cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-width-thin) solid transparent;
     transition: all var(--transition-fast);
 }
 
-.menu-button:hover {
+.nav-item:hover {
+    border-color: var(--color-pure-black);
     background-color: var(--color-pure-black);
     color: var(--color-pure-white);
 }
 
-/* Sliding Menu Panel */
-.slide-menu {
-    position: fixed;
-    top: 0;
-    /* Will be set dynamically by JS */
-    left: 0;
-    right: 0;
-    background-color: var(--color-pure-black);
-    color: var(--color-pure-white);
-    z-index: 5000;
-    transform: translateY(-100%);
-    /* Hidden above viewport */
-    transition: transform var(--transition-base);
-    border-bottom: var(--border-width-thick) solid var(--color-pure-white);
-}
-
-.slide-menu.open {
-    transform: translateY(0);
-    /* Slide down to visible */
-}
-
-.menu-content {
-    padding: 0;
-    font-family: var(--font-family-mono);
-    font-size: var(--font-size-base);
-}
-
-.menu-item {
-    color: var(--color-pure-white);
-    font-weight: var(--font-weight-normal);
-    letter-spacing: var(--letter-spacing-wider);
-    font-size: var(--font-size-lg);
-    padding: var(--space-4) var(--space-6);
-    cursor: pointer;
-    transition: color var(--transition-fast);
-    border-bottom: 1px solid var(--color-gray-600);
-}
-
-.menu-item:last-child {
-    border-bottom: none;
-}
-
-.menu-item:hover {
-    color: var(--color-te-orange);
-}
 
 .watusi-link {
     color: inherit;
@@ -674,8 +646,12 @@ header h1 {
     border-top: var(--border-width-thin) solid var(--color-border-medium);
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 500px;
+    border-left: var(--border-width-thin) solid var(--color-border-medium);
+    border-right: var(--border-width-thin) solid var(--color-border-medium);
     z-index: 8000;
     /* Below keyboard and code panel */
 }
@@ -721,17 +697,23 @@ header h1 {
     position: fixed;
     bottom: calc(var(--keyboard-height) + 20px);
     /* Above keyboard + footer */
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    /* Center horizontally */
+    width: 100%;
+    max-width: 500px;
+    /* Match site container max-width */
     background-color: var(--color-background-surface);
     border-top: var(--border-width-thin) solid var(--color-pure-black);
+    border-left: var(--border-width-thin) solid var(--color-border-medium);
+    border-right: var(--border-width-thin) solid var(--color-border-medium);
     z-index: 1200;
     /* Above keyboard and footer */
     transition: transform var(--transition-base);
 }
 
 #code-output-panel.collapsed {
-    transform: translateY(calc(100% - 48px));
+    transform: translateX(-50%) translateY(calc(100% - 48px));
 }
 
 /* Code Toggle Tab */
@@ -890,16 +872,21 @@ header h1 {
     position: fixed;
     bottom: 20px;
     /* Above footer */
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    /* Center horizontally */
+    width: 100%;
+    max-width: 500px;
+    /* Match site container max-width */
     height: var(--keyboard-height);
     background-color: var(--color-background-surface);
     border-top: var(--border-width-thin) solid var(--color-border-medium);
+    border-left: var(--border-width-thin) solid var(--color-border-medium);
+    border-right: var(--border-width-thin) solid var(--color-border-medium);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    /* Full bleed keyboard */
     z-index: 9000;
     /* Above footer, below code panel */
 }

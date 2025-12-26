@@ -131,8 +131,8 @@ CodeGeneratorFactory.register('YourModuleType', generateYourModuleCode);
 ### Effects
 - **REVERB**: Spatial depth and ambiance
   - Parameters: decay, wet, bypass
-- **EQ8**: 8-band parametric equalizer
-  - Parameters: 8 frequency bands + master gain, bypass
+- **EQ8**: 3-band equalizer (using Tone.EQ3)
+  - Parameters: low, mid, high, bypass
 
 ### Modulation
 - **LFO**: Low-frequency oscillator for parameter modulation
@@ -157,10 +157,15 @@ CodeGeneratorFactory.register('YourModuleType', generateYourModuleCode);
 
 ## 💻 Code Generation
 
-ToneDesigner generates clean, production-ready Tone.js code:
+ToneDesigner generates clean, production-ready Tone.js code with **pure synthesis setup**:
 
 ```javascript
-// Generated code example
+await Tone.start();
+
+// ═══════════════════════════════════════════════════════════════
+// INSTANTIATION BLOCK - Module Declarations  
+// ═══════════════════════════════════════════════════════════════
+
 const oscillator1 = new Tone.Oscillator({
     type: "sine",
     frequency: 440,
@@ -180,11 +185,33 @@ const envelope1 = new Tone.AmplitudeEnvelope({
     release: 1.0
 });
 
-// Connections
+// ═══════════════════════════════════════════════════════════════
+// PATCHING BLOCK - Signal Routing (DYNAMIC)
+// ═══════════════════════════════════════════════════════════════
+
 oscillator1.connect(filter1);
 filter1.connect(envelope1);
 envelope1.toDestination();
+
+// Your Tone Designer patch is ready!
+console.log("🎛️ Synthesizer loaded and ready");
 ```
+
+### Code Generation Philosophy
+- **Pure Export**: Only exports the exact synthesis setup, no triggering logic
+- **Portable**: Generated code works in any Tone.js environment  
+- **Clean**: No application-specific code or dependencies
+- **Ready to Use**: Receiving application adds its own triggering/keyboard logic as needed
+
+### Testing Code Portability
+Use `simple-test.html` to verify exported code works independently:
+
+1. **Design** your patch in ToneDesigner
+2. **Export** the generated code 
+3. **Paste** code into simple-test.html (replacing the ToneDesigner block)
+4. **Test** keyboard - should sound identical to ToneDesigner
+
+The simple test automatically adds keyboard functionality while preserving your exact synthesis design.
 
 ## 🛠️ Development Guide
 
@@ -263,6 +290,8 @@ ToneDesigner/
 ├── app.js                 # Main application logic and grid management
 ├── modules.js             # Module definitions and factory system
 ├── PatchingController.js  # Cable patching and connection management
+├── simple-test.html       # Portability tester for exported code
+├── patch.txt             # Latest exported patch for testing
 └── README.md             # This documentation
 ```
 

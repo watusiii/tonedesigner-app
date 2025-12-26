@@ -11,45 +11,39 @@
 </head>
 
 <body>
-    <header>
-        <h1>TONEDESIGNER</h1>
-        <button id="menu-button" class="menu-button">MENU</button>
-    </header>
+    <div class="site-container">
+        <header>
+            <h1>TONEDESIGNER</h1>
+            <nav class="header-nav">
+                <a href="https://buymeacoffee.com/watusi" class="nav-item">SUPPORT</a>
+                <div class="nav-item">ABOUT</div>
+                <a href="https://github.com/watusiii" class="nav-item">GITHUB</a>
+            </nav>
+        </header>
 
-    <div id="slide-menu" class="slide-menu">
-        <div class="menu-content">
-            <a href="https://buymeacoffee.com/watusi">
-                <div class="menu-item">SUPPORT</div>
-            </a>
-            <div class="menu-item">ABOUT</div>
-            <a href="https://github.com/watusiii">
-                <div class="menu-item">GITHUB</div>
-            </a>
+        <div id="app-container">
         </div>
-    </div>
 
-    <div id="app-container">
-    </div>
-
-    <div id="code-output-panel" class="collapsed">
-        <div id="code-toggle-tab" class="code-toggle-tab">
-            <span class="code-toggle-text">
-                CODE
-            </span>
-            <span class="code-toggle-icon">▲</span>
-        </div>
-        <div class="code-panel-content">
-            <div class="code-panel-header">
-                <h2 class="code-panel-title">TONE.JS CODE EXPORT</h2>
-                <button id="copy-button" class="copy-code-button">COPY CODE</button>
+        <div id="code-output-panel" class="collapsed">
+            <div id="code-toggle-tab" class="code-toggle-tab">
+                <span class="code-toggle-text">
+                    CODE
+                </span>
+                <span class="code-toggle-icon">▲</span>
             </div>
-            <textarea id="code-display" readonly></textarea>
+            <div class="code-panel-content">
+                <div class="code-panel-header">
+                    <h2 class="code-panel-title">TONE.JS CODE EXPORT</h2>
+                    <button id="copy-button" class="copy-code-button">COPY CODE</button>
+                </div>
+                <textarea id="code-display" readonly></textarea>
+            </div>
         </div>
-    </div>
 
-    <footer id="app-footer">
-        by <a href="https://watusi.cloud" target="_blank" class="watusi-link" style="margin-left:5px"> watusi</a>
-    </footer>
+        <footer id="app-footer">
+            by <a href="https://watusi.cloud" target="_blank" class="watusi-link" style="margin-left:5px"> watusi</a>
+        </footer>
+    </div>
 
     <script src="modules.js"></script>
     <script src="PatchingController.js"></script>
