@@ -275,6 +275,18 @@ body {
     /* Push content up for footer */
 }
 
+/* Site Container Responsive Design */
+@media (max-width: 520px) {
+    .site-container {
+        max-width: 100vw;
+        margin: 0;
+    }
+    
+    body {
+        background-color: var(--color-pure-white);
+    }
+}
+
 /* Header Styling - Module-like design with synth top panel feel */
 header {
     background-color: var(--color-pure-white);
@@ -328,6 +340,33 @@ header h1 {
     border-color: var(--color-pure-black);
     background-color: var(--color-pure-black);
     color: var(--color-pure-white);
+}
+
+/* Header Responsive Design */
+@media (max-width: 640px) {
+    header {
+        flex-direction: column;
+        gap: var(--space-4);
+        padding: var(--space-6) var(--space-4);
+        min-height: auto;
+    }
+    
+    header h1 {
+        font-size: var(--font-size-base);
+        text-align: center;
+    }
+    
+    .header-nav {
+        gap: var(--space-4);
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .nav-item {
+        font-size: var(--font-size-xs);
+        padding: var(--space-2);
+        min-width: auto;
+    }
 }
 
 
@@ -656,6 +695,18 @@ header h1 {
     /* Below keyboard and code panel */
 }
 
+/* Footer Responsive Design */
+@media (max-width: 520px) {
+    #app-footer {
+        left: 0;
+        right: 0;
+        max-width: 100vw;
+        transform: none;
+        border-left: none;
+        border-right: none;
+    }
+}
+
 /* Main App Container - Primary Work Surface */
 #app-container {
     flex: 1;
@@ -714,6 +765,22 @@ header h1 {
 
 #code-output-panel.collapsed {
     transform: translateX(-50%) translateY(calc(100% - 48px));
+}
+
+/* Code Panel Responsive Design */
+@media (max-width: 520px) {
+    #code-output-panel {
+        left: 0;
+        right: 0;
+        max-width: 100vw;
+        transform: none;
+        border-left: none;
+        border-right: none;
+    }
+    
+    #code-output-panel.collapsed {
+        transform: translateY(calc(100% - 48px));
+    }
 }
 
 /* Code Toggle Tab */
@@ -815,57 +882,11 @@ header h1 {
     overflow-x: auto;
 }
 
-/* Minimal scrollbar for code display */
-#code-display::-webkit-scrollbar {
-    width: 2px;
-}
-
-#code-display::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-#code-display::-webkit-scrollbar-thumb {
-    background: var(--color-gray-300);
-    border-radius: 1px;
-}
-
-#code-display::-webkit-scrollbar-thumb:hover {
-    background: var(--color-gray-400);
-}
-
-/* Firefox */
-#code-display {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-gray-300) transparent;
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    MINIMALIST SCROLLBAR STYLING - T.E. AESTHETIC
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* Minimal Scrollbar Styling for Main Site */
-#app-container::-webkit-scrollbar {
-    width: 2px;
-}
-
-#app-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-#app-container::-webkit-scrollbar-thumb {
-    background: var(--color-gray-300);
-    border-radius: 1px;
-}
-
-#app-container::-webkit-scrollbar-thumb:hover {
-    background: var(--color-gray-400);
-}
-
-/* Firefox Scrollbar Styling */
-#app-container {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-gray-300) transparent;
-}
 
 /* Sticky Keyboard Container - Bottom fixed area */
 .keyboard-container {
@@ -889,6 +910,18 @@ header h1 {
     padding: 0;
     z-index: 9000;
     /* Above footer, below code panel */
+}
+
+/* Keyboard Responsive Design */
+@media (max-width: 520px) {
+    .keyboard-container {
+        left: 0;
+        right: 0;
+        max-width: 100vw;
+        transform: none;
+        border-left: none;
+        border-right: none;
+    }
 }
 
 .test-note-button {
@@ -1896,4 +1929,418 @@ header h1 {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ABOUT POPUP - GOLDEN RATIO LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: none;
+    z-index: 10000;
+    /* Above everything */
+}
+
+.popup-overlay.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup-content {
+    background-color: var(--color-pure-white);
+    border: var(--border-width-base) solid var(--color-pure-black);
+    width: 90vw;
+    max-width: 1200px;
+    height: 80vh;
+    min-height: 600px;
+    font-family: var(--font-family-mono);
+    position: relative;
+    overflow: hidden;
+}
+
+.popup-close {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    background: none;
+    border: none;
+    color: var(--color-pure-black);
+    font-size: var(--font-size-2xl);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    z-index: 1;
+}
+
+.popup-close:hover {
+    color: var(--color-te-orange);
+    transform: scale(1.1);
+}
+
+.popup-layout {
+    display: flex;
+    height: 100%;
+}
+
+.popup-left {
+    width: 40%;
+    /* Golden ratio complement */
+    background-color: var(--color-pure-white);
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: var(--space-8);
+}
+
+.popup-left h1 {
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: var(--letter-spacing-widest);
+    line-height: var(--line-height-tight);
+    color: var(--color-pure-black);
+    margin: 0;
+    text-align: left;
+}
+
+.popup-right {
+    width: 60%;
+    /* Golden ratio major */
+    background-color: var(--color-pure-white);
+    padding: var(--space-8);
+    overflow-y: auto;
+    border-left: var(--border-width-thin) solid var(--color-gray-200);
+}
+
+.content-section {
+    margin-bottom: var(--space-6);
+}
+
+.content-section:last-child {
+    margin-bottom: 0;
+}
+
+.popup-right p {
+    margin-bottom: var(--space-4);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    line-height: var(--line-height-relaxed);
+}
+
+.popup-right h3 {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+    color: var(--color-pure-black);
+    margin: 0 0 var(--space-3) 0;
+    border-bottom: 1px solid var(--color-gray-300);
+    padding-bottom: var(--space-2);
+}
+
+.popup-right ul {
+    margin-bottom: var(--space-4);
+    padding-left: var(--space-5);
+}
+
+.popup-right li {
+    margin-bottom: var(--space-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-normal);
+}
+
+.popup-right strong {
+    color: var(--color-pure-black);
+    font-weight: var(--font-weight-semibold);
+}
+
+.intro-text {
+    font-size: var(--font-size-lg) !important;
+    line-height: var(--line-height-relaxed);
+    color: var(--color-text-primary) !important;
+    margin-bottom: var(--space-5) !important;
+}
+
+.port-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--border-radius-full);
+    border: var(--border-width-thin) solid;
+    margin: 0 var(--space-1);
+    vertical-align: middle;
+}
+
+.port-indicator.audio {
+    background-color: var(--color-te-yellow);
+    border-color: var(--color-te-yellow-dark);
+}
+
+.port-indicator.cv {
+    background-color: var(--color-te-blue);
+    border-color: var(--color-te-blue-dark);
+}
+
+.port-indicator.modulation {
+    background-color: var(--color-te-purple);
+    border-color: var(--color-te-purple-dark);
+}
+
+.coming-soon {
+    font-style: italic;
+    color: var(--color-text-tertiary) !important;
+    text-align: center;
+}
+
+.credit {
+    border-top: 1px solid var(--color-gray-300);
+    padding-top: var(--space-4);
+    margin-top: var(--space-6);
+}
+
+.watusi-credit {
+    color: var(--color-te-orange);
+    text-decoration: none;
+    font-weight: var(--font-weight-semibold);
+    transition: color var(--transition-fast);
+}
+
+.watusi-credit:hover {
+    color: var(--color-te-orange-dark);
+    text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   MINIMAL SCROLLBARS SITE-WIDE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Webkit scrollbars (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-gray-400);
+    border-radius: 1px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gray-500);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox scrollbars */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gray-400) transparent;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .popup-content {
+        width: 95vw;
+        height: 90vh;
+    }
+    
+    .popup-layout {
+        flex-direction: column;
+    }
+    
+    .popup-left {
+        width: 100%;
+        height: 30%;
+        padding: var(--space-6);
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .popup-left h1 {
+        font-size: var(--font-size-2xl);
+    }
+    
+    .popup-right {
+        width: 100%;
+        height: 70%;
+        border-left: none;
+        border-top: var(--border-width-thin) solid var(--color-gray-200);
+        padding: var(--space-6);
+    }
+    
+    .intro-text {
+        font-size: var(--font-size-base) !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   AUDIO START SURFACE - TACTILE INTERFACE COVER
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.audio-surface {
+    position: fixed;
+    top: 94px;
+    /* Below header border with proper clearance */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 500px;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(3px);
+    display: none;
+    z-index: 9500;
+    /* Above interface, below about popup */
+}
+
+/* Disable scrolling when audio surface is showing */
+body.audio-blocked {
+    overflow: hidden;
+}
+
+.audio-surface.show {
+    display: block;
+}
+
+.power-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    background-color: var(--color-pure-white);
+    border: var(--border-width-base) solid var(--color-pure-black);
+    border-radius: var(--border-radius-full);
+    /* Circular power button */
+    color: var(--color-pure-black);
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    /* White glow */
+}
+
+.audio-start-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--color-pure-white);
+    border-top: var(--border-width-base) solid var(--color-pure-black);
+    padding: var(--space-6);
+    z-index: 1;
+}
+
+.audio-footer-content {
+    text-align: right;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.audio-footer-content h3 {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-widest);
+    color: var(--color-gray-500);
+    margin: 0 0 var(--space-3) 0;
+    /* Same styling as header title */
+}
+
+.audio-instruction {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: var(--letter-spacing-wide);
+    color: var(--color-text-primary);
+    margin: 0 0 var(--space-2) 0;
+}
+
+.audio-note {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-normal);
+    letter-spacing: var(--letter-spacing-normal);
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.power-button:hover {
+    background-color: var(--color-gray-100);
+    transform: translate(-50%, -50%) scale(1.05);
+}
+
+.power-button:active {
+    background-color: var(--color-pure-black);
+    color: var(--color-pure-white);
+    transform: translate(-50%, -50%) scale(0.95);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .audio-surface {
+        top: 114px;
+        /* Account for taller mobile header + border + clearance */
+    }
+    
+    .power-button {
+        width: 40px;
+        height: 40px;
+        font-size: var(--font-size-base);
+    }
+    
+    .power-button:hover {
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+    
+    .power-button:active {
+        transform: translate(-50%, -50%) scale(0.95);
+    }
+    
+    .audio-start-footer {
+        padding: var(--space-4);
+    }
+    
+    .audio-footer-content h3 {
+        font-size: var(--font-size-base);
+    }
+    
+    .audio-instruction {
+        font-size: var(--font-size-sm);
+    }
+    
+    .audio-note {
+        font-size: var(--font-size-xs);
+    }
+}
+
+@media (max-width: 520px) {
+    .audio-surface {
+        left: 0;
+        right: 0;
+        max-width: 100vw;
+        transform: none;
+    }
 }

@@ -4303,6 +4303,80 @@ function initializeP5VisualsForModule(moduleId, moduleType) {
 // Initialize the platform when the page loads
 document.addEventListener('DOMContentLoaded', setupSynth);
 
+// Audio start overlay functionality
+document.addEventListener('DOMContentLoaded', () => {
+    const audioOverlay = document.getElementById('audio-start-popup');
+    const startAudioBtn = document.getElementById('start-audio-btn');
+
+    // Disable scrolling initially when audio surface is showing
+    if (audioOverlay && audioOverlay.classList.contains('show')) {
+        document.body.classList.add('audio-blocked');
+    }
+
+    // Handle audio start button click
+    if (startAudioBtn) {
+        startAudioBtn.addEventListener('click', async () => {
+            try {
+                // Start Tone.js audio context
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                    console.log('🎵 Audio context started successfully');
+                }
+                
+                // Hide the audio overlay and re-enable scrolling
+                audioOverlay.classList.remove('show');
+                document.body.classList.remove('audio-blocked');
+                
+                // Optional: show a brief success message
+                console.log('🎵 TONEDESIGNER ready to make music!');
+                
+            } catch (error) {
+                console.error('❌ Failed to start audio context:', error);
+                // Still hide overlay and re-enable scrolling even if there's an error
+                audioOverlay.classList.remove('show');
+                document.body.classList.remove('audio-blocked');
+            }
+        });
+    }
+});
+
+// About popup functionality
+document.addEventListener('DOMContentLoaded', () => {
+    const aboutNavItem = document.querySelector('.nav-item:nth-child(2)'); // About nav item
+    const aboutPopup = document.getElementById('about-popup');
+    const closeButton = document.getElementById('close-about');
+
+    // Show popup when About is clicked
+    if (aboutNavItem) {
+        aboutNavItem.addEventListener('click', () => {
+            aboutPopup.classList.add('show');
+        });
+    }
+
+    // Hide popup when close button is clicked
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            aboutPopup.classList.remove('show');
+        });
+    }
+
+    // Hide popup when clicking outside the content
+    if (aboutPopup) {
+        aboutPopup.addEventListener('click', (e) => {
+            if (e.target === aboutPopup) {
+                aboutPopup.classList.remove('show');
+            }
+        });
+    }
+
+    // Hide popup when pressing Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && aboutPopup.classList.contains('show')) {
+            aboutPopup.classList.remove('show');
+        }
+    });
+});
+
 // Disable right-click context menu and drag behaviors
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();

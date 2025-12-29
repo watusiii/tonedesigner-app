@@ -5,6 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TONEDESIGNER</title>
+
+    <!-- Open Graph meta tags (Facebook, Discord, etc.) -->
+    <meta property="og:title" content="TONEDESIGNER">
+    <meta property="og:description"
+        content="Interactive modular synthesizer design tool - Create and patch virtual synth modules in your browser">
+    <meta property="og:image" content="https://watusi.cloud/tonedesigner/screenshot.png">
+    <meta property="og:url" content="https://watusi.cloud/tonedesigner">
+    <meta property="og:type" content="website">
+
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="TONEDESIGNER">
+    <meta name="twitter:description"
+        content="Interactive modular synthesizer design tool - Create and patch virtual synth modules in your browser">
+    <meta name="twitter:image" content="https://watusi.cloud/tonedesigner/screenshot.png">
+
     <script src="https://unpkg.com/tone@latest/build/Tone.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
     <link rel="stylesheet" href="styles.css">
@@ -17,11 +33,25 @@
             <nav class="header-nav">
                 <a href="https://buymeacoffee.com/watusi" class="nav-item">SUPPORT</a>
                 <div class="nav-item">ABOUT</div>
-                <a href="https://github.com/watusiii" class="nav-item">GITHUB</a>
+                <a href="https://github.com/watusiii/tonedesigner-app/" class="nav-item">GITHUB</a>
             </nav>
         </header>
 
         <div id="app-container">
+        </div>
+
+        <!-- Audio Start Surface -->
+        <div id="audio-start-popup" class="audio-surface show">
+            <button id="start-audio-btn" class="power-button">⏻</button>
+            
+            <!-- Audio Start Footer -->
+            <div class="audio-start-footer">
+                <div class="audio-footer-content">
+                    <h3>TONEDESIGNER</h3>
+                    <p class="audio-instruction">Press power button to start</p>
+                    <p class="audio-note">Play notes with keyboard</p>
+                </div>
+            </div>
         </div>
 
         <div id="code-output-panel" class="collapsed">
@@ -43,6 +73,72 @@
         <footer id="app-footer">
             by <a href="https://watusi.cloud" target="_blank" class="watusi-link" style="margin-left:5px"> watusi</a>
         </footer>
+    </div>
+
+    <!-- About Popup -->
+    <div id="about-popup" class="popup-overlay">
+        <div class="popup-content">
+            <button id="close-about" class="popup-close">×</button>
+            <div class="popup-layout">
+                <div class="popup-left">
+                    <h1>ABOUT<br>TONEDESIGNER</h1>
+                </div>
+                <div class="popup-right">
+                    <div class="content-section">
+                        <p class="intro-text"><strong>TONEDESIGNER</strong> is an interactive modular synthesizer that generates <strong>Tone.js code</strong> for any web application, game, or creative project that supports JavaScript audio.</p>
+                    </div>
+
+                    <div class="content-section">
+                        <h3>CREATE SOUNDS FOR:</h3>
+                        <ul>
+                            <li>Web applications and games</li>
+                            <li>Interactive websites and installations</li>
+                            <li>Music production tools</li>
+                            <li>Educational audio projects</li>
+                            <li>Any project using Tone.js framework</li>
+                        </ul>
+                    </div>
+
+                    <div class="content-section">
+                        <h3>HOW TO USE:</h3>
+                        <ul>
+                            <li><strong>ADD MODULES:</strong> Click + to add oscillators, filters, effects</li>
+                            <li><strong>PATCH CABLES:</strong> Drag from outputs <span class="port-indicator audio"></span> right to inputs <span class="port-indicator audio"></span> left</li>
+                            <li><strong>ADJUST CONTROLS:</strong> Turn knobs and change settings</li>
+                            <li><strong>PLAY NOTES:</strong> Test with keyboard at bottom</li>
+                        </ul>
+                    </div>
+
+                    <div class="content-section">
+                        <h3>CODE OUTPUT:</h3>
+                        <p>Click the <strong>CODE</strong> tab to export your patch as Tone.js code. Copy and paste this code into your project to recreate the exact same synthesizer with all your settings and connections.</p>
+                        <p>The generated code includes all module parameters, routing, and can be triggered programmatically or with MIDI inputs in your application.</p>
+                    </div>
+
+                    <div class="content-section">
+                        <h3>MIDI SUPPORT:</h3>
+                        <p>The exported code is fully compatible with Web MIDI API. Connect MIDI controllers to trigger notes, adjust parameters, and control your synthesizer patches in real-time.</p>
+                    </div>
+
+                    <div class="content-section">
+                        <h3>PORT COLORS:</h3>
+                        <ul>
+                            <li><span class="port-indicator audio"></span> <strong>YELLOW:</strong> Audio signals</li>
+                            <li><span class="port-indicator cv"></span> <strong>BLUE:</strong> Control voltage (CV) and gates</li>
+                            <li><span class="port-indicator modulation"></span> <strong>PURPLE:</strong> Modulation outputs</li>
+                        </ul>
+                    </div>
+
+                    <div class="content-section">
+                        <p class="coming-soon">More modules and features coming soon!</p>
+                    </div>
+
+                    <div class="content-section credit">
+                        <p>Created by <a href="https://watusi.cloud" target="_blank" class="watusi-credit">Watusi</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="modules.js"></script>
