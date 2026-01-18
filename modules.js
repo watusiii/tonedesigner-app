@@ -129,13 +129,16 @@ const OscillatorModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">VCO-1</h3>
-                    <button class="bypass-toggle ${oscillatorData.parameters.bypass ? 'bypassed' : ''}" 
-                            data-param="bypass" 
-                            data-value="${oscillatorData.parameters.bypass}">
-                        B
-                    </button>
+                    <div class="module-header-controls">
+                        <button class="bypass-toggle ${oscillatorData.parameters.bypass ? 'bypassed' : ''}"
+                                data-param="bypass"
+                                data-value="${oscillatorData.parameters.bypass}">
+                            B
+                        </button>
+                        <button class="delete-module" title="Delete module">×</button>
+                    </div>
                 </div>
-                
+
                 <div class="module-controls">
                     <div class="control-group">
                         <select class="waveform-selector" data-param="waveform">
@@ -217,13 +220,16 @@ const NoiseModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">NOISE-1</h3>
-                    <button class="bypass-toggle ${noiseData.parameters.bypass ? 'bypassed' : ''}" 
-                            data-param="bypass" 
-                            data-value="${noiseData.parameters.bypass}">
-                        B
-                    </button>
+                    <div class="module-header-controls">
+                        <button class="bypass-toggle ${noiseData.parameters.bypass ? 'bypassed' : ''}"
+                                data-param="bypass"
+                                data-value="${noiseData.parameters.bypass}">
+                            B
+                        </button>
+                        <button class="delete-module" title="Delete module">×</button>
+                    </div>
                 </div>
-                
+
                 <div class="module-controls">
                     <div class="control-group">
                         <select class="noise-type-selector" data-param="type">
@@ -306,13 +312,16 @@ const FilterModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">VCF-1</h3>
-                    <button class="bypass-toggle ${filterData.parameters.bypass ? 'bypassed' : ''}" 
-                            data-param="bypass" 
-                            data-value="${filterData.parameters.bypass}">
-                        B
-                    </button>
+                    <div class="module-header-controls">
+                        <button class="bypass-toggle ${filterData.parameters.bypass ? 'bypassed' : ''}"
+                                data-param="bypass"
+                                data-value="${filterData.parameters.bypass}">
+                            B
+                        </button>
+                        <button class="delete-module" title="Delete module">×</button>
+                    </div>
                 </div>
-                
+
                 <div class="module-controls">
                     <div class="control-group">
                         <select class="filter-type-selector" data-param="type">
@@ -409,14 +418,15 @@ const EnvelopeModule = {
                 <div class="module-header">
                     <h3 class="module-title">ENV/VCA-1</h3>
                     <div class="module-header-controls">
-                        <button class="bypass-toggle ${envelopeData.parameters.bypass ? 'bypassed' : ''}" 
-                                data-param="bypass" 
+                        <button class="bypass-toggle ${envelopeData.parameters.bypass ? 'bypassed' : ''}"
+                                data-param="bypass"
                                 data-value="${envelopeData.parameters.bypass}">
                             B
                         </button>
                         <button class="env-mode-toggle" data-param="noteMode" data-value="${envelopeData.parameters.noteMode}">
                             ${envelopeData.parameters.noteMode ? 'NOTE' : 'GATE'}
                         </button>
+                        <button class="delete-module" title="Delete module">×</button>
                     </div>
                 </div>
                 
@@ -508,13 +518,16 @@ const LFOModule = {
             <div class="synth-module" data-module-id="${lfoData.id}">
                 <div class="module-header">
                     <h3 class="module-title">LFO-1</h3>
-                    <button class="bypass-toggle ${lfoData.parameters.bypass ? 'bypassed' : ''}" 
-                            data-param="bypass" 
-                            data-value="${lfoData.parameters.bypass}">
-                        B
-                    </button>
+                    <div class="module-header-controls">
+                        <button class="bypass-toggle ${lfoData.parameters.bypass ? 'bypassed' : ''}"
+                                data-param="bypass"
+                                data-value="${lfoData.parameters.bypass}">
+                            B
+                        </button>
+                        <button class="delete-module" title="Delete module">×</button>
+                    </div>
                 </div>
-                
+
                 <div class="module-controls">
                     <div class="control-group">
                         <select class="lfo-type-selector" data-param="type">
@@ -614,13 +627,16 @@ const ReverbModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">REVERB-1</h3>
-                    <button class="bypass-toggle ${reverbData.parameters.bypass ? 'bypassed' : ''}" 
-                            data-param="bypass" 
-                            data-value="${reverbData.parameters.bypass}">
-                        B
-                    </button>
+                    <div class="module-header-controls">
+                        <button class="bypass-toggle ${reverbData.parameters.bypass ? 'bypassed' : ''}"
+                                data-param="bypass"
+                                data-value="${reverbData.parameters.bypass}">
+                            B
+                        </button>
+                        <button class="delete-module" title="Delete module">×</button>
+                    </div>
                 </div>
-                
+
                 <div class="module-controls">
                     <div class="control-group reverb-canvas-group">
                         <div class="wave-visual" data-wave-type="reverb"></div>
@@ -764,13 +780,16 @@ const EQ8Module = {
                 
                 <div class="module-header">
                     <div class="module-title">EQ8</div>
-                    <button class="bypass-toggle ${eqData.parameters.bypass ? 'bypassed' : ''}" 
-                            data-param="bypass" 
-                            data-value="${eqData.parameters.bypass}">
-                        B
-                    </button>
+                    <div class="module-header-controls">
+                        <button class="bypass-toggle ${eqData.parameters.bypass ? 'bypassed' : ''}"
+                                data-param="bypass"
+                                data-value="${eqData.parameters.bypass}">
+                            B
+                        </button>
+                        <button class="delete-module" title="Delete module">×</button>
+                    </div>
                 </div>
-                
+
                 <div class="module-controls eq8-controls">
                     ${bandControls}
                     <div class="eq8-visual-container">
@@ -868,13 +887,16 @@ const MixerModule = {
                 
                 <div class="module-header">
                     <h3 class="module-title">MIXER-1</h3>
-                    <button class="bypass-toggle ${mixerData.parameters.bypass ? 'bypassed' : ''}" 
-                            data-param="bypass" 
-                            data-value="${mixerData.parameters.bypass}">
-                        B
-                    </button>
+                    <div class="module-header-controls">
+                        <button class="bypass-toggle ${mixerData.parameters.bypass ? 'bypassed' : ''}"
+                                data-param="bypass"
+                                data-value="${mixerData.parameters.bypass}">
+                            B
+                        </button>
+                        <button class="delete-module" title="Delete module">×</button>
+                    </div>
                 </div>
-                
+
                 <div class="module-controls mixer-controls">
                     ${channelStrips}
                     <div class="mixer-visual-container">

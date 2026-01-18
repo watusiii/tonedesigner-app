@@ -2814,9 +2814,12 @@ function initializeModules() {
         
         // Setup envelope toggle buttons for original envelope
         setupEnvelopeToggles();
-        
+
         // Setup bypass toggle buttons for all modules
         setupBypassToggles();
+
+        // Setup delete buttons for all modules
+        setupDeleteButtons();
     }
 }
 
@@ -2886,6 +2889,27 @@ function setupBypassToggles() {
                 syncToneEngine(targetNode);
             } else {
                 console.error(`Could not find module node for ${containerId}`);
+            }
+        });
+    });
+}
+
+/**
+ * Setup delete button click handlers for all modules
+ */
+function setupDeleteButtons() {
+    document.querySelectorAll('.delete-module').forEach(deleteBtn => {
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const container = deleteBtn.closest('.synth-module');
+            if (!container) {
+                console.error('Could not find module container for delete button');
+                return;
+            }
+            const moduleId = container.dataset.moduleId;
+
+            if (confirm(`Delete module ${moduleId}?`)) {
+                deleteModule(moduleId);
             }
         });
     });
@@ -4077,7 +4101,19 @@ function initializeNewModuleListeners(moduleInstance) {
                     }
                 });
             }
-            
+
+            // Initialize delete button
+            const deleteButton = moduleElement.querySelector('.delete-module');
+            if (deleteButton) {
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const moduleId = moduleElement.dataset.moduleId;
+                    if (confirm(`Delete module ${moduleId}?`)) {
+                        deleteModule(moduleId);
+                    }
+                });
+            }
+
             // Initialize P5 visuals for the new module
             const visualElements = moduleElement.querySelectorAll('.wave-visual');
             console.log(`📊 Found ${visualElements.length} visual elements`, visualElements);
@@ -4094,6 +4130,96 @@ function initializeNewModuleListeners(moduleInstance) {
     
     // Sync with Tone.js engine
     syncToneEngine(moduleInstance.node);
+}
+
+/**
+ * Delete a module and clean up all its resources
+ * @param {string} moduleId - The ID of the module to delete
+ */
+function deleteModule(moduleId) {
+    console.log(`🗑️ Deleting module: ${moduleId}`);
+
+    try {
+        // Get the module instance
+        const moduleInstance = moduleInstances.get(moduleId);
+        if (!moduleInstance) {
+            console.warn(`⚠️ Module ${moduleId} not found in instances`);
+            return;
+        }
+
+        // STEP 1: Stop and dispose the Tone.js object
+        if (moduleInstance.toneObject) {
+            try {
+                // Stop if it's a source (oscillator, LFO, noise)
+                if (typeof moduleInstance.toneObject.stop === 'function') {
+                    moduleInstance.toneObject.stop();
+                }
+                // Disconnect from all outputs
+                moduleInstance.toneObject.disconnect();
+                // Dispose the Tone.js object
+                if (typeof moduleInstance.toneObject.dispose === 'function') {
+                    moduleInstance.toneObject.dispose();
+                }
+                console.log(`🔇 Disposed Tone.js object for ${moduleId}`);
+            } catch (e) {
+                console.warn(`⚠️ Error disposing Tone object for ${moduleId}:`, e);
+            }
+        }
+
+        // STEP 2: Remove all patch connections involving this module
+        const connectionsToRemove = currentPatchConnections.filter(conn =>
+            conn.source.startsWith(moduleId + '/') || conn.target.startsWith(moduleId + '/')
+        );
+
+        connectionsToRemove.forEach(conn => {
+            const index = currentPatchConnections.findIndex(c =>
+                c.source === conn.source && c.target === conn.target
+            );
+            if (index !== -1) {
+                currentPatchConnections.splice(index, 1);
+                console.log(`🔌 Removed connection: ${conn.source} → ${conn.target}`);
+            }
+        });
+
+        // STEP 3: Remove from synthNodes array
+        const nodeIndex = synthNodes.findIndex(node => node.id === moduleId);
+        if (nodeIndex !== -1) {
+            synthNodes.splice(nodeIndex, 1);
+            console.log(`📦 Removed ${moduleId} from synthNodes`);
+        }
+
+        // STEP 4: Remove from moduleInstances map
+        moduleInstances.delete(moduleId);
+        console.log(`🗺️ Removed ${moduleId} from moduleInstances`);
+
+        // STEP 5: Remove P5 canvas if exists
+        if (typeof removeP5Canvas === 'function') {
+            removeP5Canvas(moduleId);
+        }
+
+        // STEP 6: Remove DOM element
+        const moduleElement = document.querySelector(`[data-module-id="${moduleId}"]`);
+        if (moduleElement) {
+            moduleElement.remove();
+            console.log(`🖼️ Removed DOM element for ${moduleId}`);
+        }
+
+        // STEP 7: Recompile patching and redraw cables
+        compilePatching();
+
+        // STEP 8: Update code display
+        updateCodeDisplay();
+
+        // STEP 9: Refresh patching controller
+        if (window.patchingController) {
+            window.patchingController.initializeListeners();
+        }
+
+        console.log(`✅ Successfully deleted module: ${moduleId}`);
+
+    } catch (error) {
+        console.error(`❌ Failed to delete module ${moduleId}:`, error);
+    }
 }
 
 /**

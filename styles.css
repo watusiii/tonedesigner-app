@@ -1078,6 +1078,9 @@ header h1 {
     /* Light gray background for taskbar area */
     border-bottom: var(--border-width-thin) solid var(--color-border-medium);
     margin-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .module-title {
@@ -1929,6 +1932,33 @@ header h1 {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+/* Delete module button */
+.delete-module {
+    background: var(--color-pure-white);
+    color: var(--color-gray-300);
+    border: 1px solid var(--color-gray-200);
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 3px;
+    min-width: 20px;
+    transition: all 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.synth-module:hover .delete-module {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.delete-module:hover {
+    background: var(--color-te-red);
+    border-color: var(--color-te-red-dark);
+    color: var(--color-pure-white);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
