@@ -1,4 +1,13 @@
 # TONEDESIGNER
+Fix the LFO
+
+Repolho edit.
+
+watusi edit
+
+God edit.
+
+Shaboosh edit 
 
 
 **A Modular Synthesizer Platform for Web Audio**
