@@ -9,7 +9,7 @@
  * 
  * DESIGN PRINCIPLES:
  * ───────────────────────────────────────────────────────────────────────────────
- * • Complete separation of concerns from app.js
+ * • Complete separation of concerns from app.js 
  * • Universal port interaction (single event listener system)
  * • Robust layering with proper pointer events management
  * • Standard modular synth UX (click-drag from output to input)
