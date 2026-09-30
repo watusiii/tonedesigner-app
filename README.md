@@ -4,6 +4,12 @@ Fix the LFO
 Repolho edit.
 
 watusi edit
+
+God edit.
+
+Shaboosh edit 
+
+
 **A Modular Synthesizer Platform for Web Audio**
 
 ToneDesigner is a visual, modular synthesizer platform that creates production-ready Tone.js code. Built with minimalist design principles inspired by Teenage Engineering and Nothing aesthetics, it provides an intuitive interface for building complex audio synthesizer patches.
