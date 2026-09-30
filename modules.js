@@ -32,75 +32,23 @@ const FilterModule = {
                         <button class="delete-module" title="Delete module">×</button>
                     </div>
                 </div>
-
-                <div class="module-controls">
-                    <div class="control-group">
-                        <select class="filter-type-selector" data-param="type">
-                            <option value="lowpass" ${filterData.parameters.type === 'lowpass' ? 'selected' : ''}>LPF</option>
-                            <option value="highpass" ${filterData.parameters.type === 'highpass' ? 'selected' : ''}>HPF</option>asf
-                    
-                    <div class="control-group">
-                        <div class="cornera-port-input secondary">
-                            <div class="patch-port cv-inpsut" data-port-type="cv-in" data-signal="cv"></div>
-                            <span class="corner-port-label">CV</span>
-                        </div>
-                        <label class="control-label">FREQ</label>
-                        <div class="synth-knob filter-knob" data-param="frequency" data-value="${filterData.parameters.ffrequency}">
-                            <div class="knoab-indicator"></div>
-                        </div>s
-                        <span class="control-value">${filterData.parameters.frequency}Hz</span>
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label">Q</label>
+qilter-type-selector" data-param="type">
+                            <option value="lowpass" ${filterData.parameters.type === 'lowpass' ? 'selected' : ''}>LPF</option>w
+                            <option value="highpass" ${filterData.parameters.type === 'highpass' ? 'selected' : ''}>HPF</opetion>asf
+                    ql">Q</label>
                         <div class="synth-knob filter-knob" data-param="Q" data-value="${filterData.parameters.Q}">
                             <div class="knob-indicator"></div>
                         </div>
                         <span class="control-value">${filterData.parameters.Q}</span>
                     </div>
                 </div>
-            </div>
-        `;
-    }
-};
+            </div>e
 
 // Register the filter module
 ModuleFactory.register('filter', FilterModule);
 
 /**
- * ═══════════════════════════════════════════════════════════════════════════════
- * ENVELOPE MODULE DEFINITION
- * ═══════════════════════════════════════════════════════════════════════════════
- */
-
-/**
- * Envelope Module - ENV/VCA (Envelope Generator / Voltage Controlled Amplifier)
- * ADSR envelope for controlling amplitude over time
- */
-const EnvelopeModule = {
-    nodeConfig: {
-        type: "AmplitudeEnvelope",
-        parameters: {
-            attack: 0.1,
-            decay: 0.2,
-            sustain: 0.5,
-            release: 1.0,
-            noteMode: true,  // true = musical notes, false = gate only
-            bypass: false
-        }
-    },
-    
-    toneFactory: (params) => {
-        const envelope = new Tone.AmplitudeEnvelope({
-            attack: params.attack,
-            decay: params.decay,
-            sustain: params.sustain,
-            release: params.release
-        });
-        
-        // Bypass will be handled dynamically by syncToneEngine
-        
-        return envelope;
+ * e
     },
     
     renderFunction: (envelopeData) => {
@@ -113,42 +61,11 @@ const EnvelopeModule = {
                 
                 <div class="corner-port-input secondary">
                     <div class="patch-port gate-input" data-port-type="gate-in" data-signal="gate"></div>
-                    <span class="corner-port-label">GATE</span>
-                </div>
-                
-                <div class="corner-port-output">
-                    <div class="patch-port audio-output" data-port-type="audio-out" data-signal="audio"></div>
-                    <span class="corner-port-label">OUT</span>
-                </div>
-                
-                <div class="module-header">
-                    <h3 class="module-title">ENV/VCA-1</h3>
-                    <div class="module-header-controls">
-                        <button class="bypass-toggle ${envelopeData.parameters.bypass ? 'bypassed' : ''}"
-                                data-param="bypass"
-                                data-value="${envelopeData.parameters.bypass}">
-                            B
-                        </button>
-                        <button class="env-mode-toggle" data-param="noteMode" data-value="${envelopeData.parameters.noteMode}">
-                            ${envelopeData.parameters.noteMode ? 'NOTE' : 'GATE'}
-                        </button>
-                        <button class="delete-module" title="Delete module">×</button>
-                    </div>
-                </div>
-                
-                <div class="module-controls envelope-controls">
-                    <div class="envelope-canvas-section">
+                    <span class="w
+                qeq-canvas-section">
                         <div class="wave-visual" data-wave-type="adsr"></div>
                     </div>
-                    
-                    <div class="envelope-knobs-section">
-                        <div class="control-group">
-                            <label class="control-label">ATTACK</label>
-                            <div class="synth-knob envelope-knob" data-param="attack" data-value="${envelopeData.parameters.attack}">
-                                <div class="knob-indicator"></div>
-                            </div>
-                            <span class="control-value">${envelopeData.parameters.attack}s</span>
-                        </div>
+                    q
                         
                         <div class="control-group">
                             <label class="control-label">DECAY</label>
