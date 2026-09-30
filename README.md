@@ -1,7 +1,6 @@
 # TONEDESIGNER
 Fix the LFO
-shaboos is super gay 
-
+ this is the beginnang of tim
 Repolho edit.
 
 watusi edit
