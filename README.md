@@ -1,6 +1,6 @@
 # TONEDESIGNER
 Fix the LFO
-shaboos is gay 
+shaboos is super gay 
 
 Repolho edit.
 
