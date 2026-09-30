@@ -1,59 +1,5 @@
-/**
- * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
- * T.E. GRID SYNTHESIS - MODULAR SYNTHESIZER LIBRARY
- * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
- * 
- * This file contains all synthesizer module definitions and the factory system
- * for creating modules dynamically. Each module follows the Synth Node Pattern:
- * 
- * Visual Module � Synth Node Object � Tone.js Object
- * 
- * ARCHITECTURE:
- * - ModuleFactory: Central factory for creating modules
- * - ModuleRegistry: Stores module definitions
- * - Each module definition includes: nodeConfig, renderFunction, toneFactory
- * 
- * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
- */
-
-/**
- * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
- * MODULE FACTORY SYSTEMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
- */
-
-/**
- * Central registry for all module definitions
- */
-const ModuleRegistry = {};
-
-/**
- * Module Factory - Creates instances of synthesizer modules
- */
-class ModuleFactory {
-    /**
-     * Register a new module type
-     * @param {string} type - Module type identifier (e.g., 'oscillator')
-     * @param {Object} definition - Module definition with nodeConfig, renderFunction, toneFactory
-     */
-    static register(type, definition) {
-        ModuleRegistry[type] = definition;
-        console.log(`T.E. Grid: Registered module type "${type}"`);
-    }
-    
-    /**
-     * Create a new module instance
-     * @param {string} type - Module type to create
-     * @param {string} id - Unique identifier for this instance
-     * @param {Object} customParams - Optional parameter overrides
-     * @returns {Object} Module instance with node, toneObject, and element
-     */
-    static create(type, id, customParams = {}) {
-        const definition = ModuleRegistry[type];
-        if (!definition) {
-            throw new Error(`Unknown module type: ${type}`);
-        }
-        
-        // Create node with custom parameters
+/**f
+ fao
         const node = {
             id: id,
             type: definition.nodeConfig.type,
@@ -62,216 +8,17 @@ class ModuleFactory {
         
         // Create Tone.js object
         const toneObject = definition.toneFactory(node.parameters);
-        
-        // Create visual element
-        const element = definition.renderFunction(node);
-        
-        console.log(`T.E. Grid: Created ${type} module with id "${id}"`);
-        
-        return {
-            node,
-            toneObject,
-            element,
-            type
-        };
-    }
-    
-    /**
-     * Get list of available module types
-     * @returns {Array} List of registered module types
-     */
-    static getAvailableTypes() {
-        return Object.keys(ModuleRegistry);
-    }
-}
-
-/**
- * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
- * OSCILLATOR MODULE DEFINITION
- * PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
- */
-
-/**
- * Oscillator Module - VCO (Voltage Controlled Oscillator)
- * Generates raw sound waveforms (Sine, Square, Sawtooth, Triangle)
- */
-const OscillatorModule = {
-    nodeConfig: {
-        type: "OmniOscillator",
-        parameters: {
-            waveform: "sine",
-            frequency: 440,
-            detune: 0,
-            bypass: false
-        }
-    },
-    
-    toneFactory: (params) => {
-        const oscillator = new Tone.Oscillator({
-            frequency: params.frequency,
-            type: params.waveform,
-            detune: params.detune
-        });
-        
-        // Bypass will be handled dynamically by syncToneEngine
-        
-        return oscillator;
-    },
-    
-    renderFunction: (oscillatorData) => {
-        return `
-            <div class="synth-module" data-module-id="${oscillatorData.id}">
-                <div class="corner-port-output">
-                    <div class="patch-port audio-output" data-port-type="audio-out" data-signal="audio"></div>
-                    <span class="corner-port-label">OUT</span>
-                </div>
-                
-                <div class="module-header">
-                    <h3 class="module-title">VCO-1</h3>
-                    <div class="module-header-controls">
-                        <button class="bypass-toggle ${oscillatorData.parameters.bypass ? 'bypassed' : ''}"
-                                data-param="bypass"
-                                data-value="${oscillatorData.parameters.bypass}">
-                            B
-                        </button>
-                        <button class="delete-module" title="Delete module">×</button>
-                    </div>
-                </div>
-
-                <div class="module-controls">
-                    <div class="control-group">
-                        <select class="waveform-selector" data-param="waveform">
-                            <option value="sine" ${oscillatorData.parameters.waveform === 'sine' ? 'selected' : ''}>SINE</option>
-                            <option value="square" ${oscillatorData.parameters.waveform === 'square' ? 'selected' : ''}>SQUARE</option>
-                            <option value="sawtooth" ${oscillatorData.parameters.waveform === 'sawtooth' ? 'selected' : ''}>SAW</option>
-                            <option value="triangle" ${oscillatorData.parameters.waveform === 'triangle' ? 'selected' : ''}>TRI</option>
-                        </select>
-                        <div class="wave-visual" data-wave-type="${oscillatorData.parameters.waveform}"></div>
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label">FREQ</label>
-                        <div class="synth-knob" data-param="frequency" data-value="${oscillatorData.parameters.frequency}">
-                            <div class="knob-indicator"></div>
-                        </div>
-                        <span class="control-value">${oscillatorData.parameters.frequency}Hz</span>
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label">DETUNE</label>
-                        <div class="synth-knob" data-param="detune" data-value="${oscillatorData.parameters.detune}">
-                            <div class="knob-indicator"></div>
-                        </div>
-                        <span class="control-value">${oscillatorData.parameters.detune}¢</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-};
-
-// Register the oscillator module
-ModuleFactory.register('oscillator', OscillatorModule);
-
-/**
- * ═══════════════════════════════════════════════════════════════════════════════
- * NOISE GENERATOR MODULE DEFINITION
- * ═══════════════════════════════════════════════════════════════════════════════
- */
-
-/**
- * Noise Generator Module - Noise Source
- * Generates white, pink, and brown noise for percussive and textural sounds
- */
-const NoiseModule = {
-    nodeConfig: {
-        type: "Noise",
-        parameters: {
-            type: "white",     // white, pink, brown
-            volume: 0.5,       // Output volume (0-1)
-            playbackRate: 1.0, // Playback rate for brown noise
-            bypass: false
-        }
-    },
-    
-    toneFactory: (params) => {
-        const noise = new Tone.Noise({
-            type: params.type,
-            volume: Tone.gainToDb(params.volume),
-            playbackRate: params.playbackRate
-        });
-        
-        // Start immediately to avoid timing conflicts
-        noise.start();
-        
-        // Bypass will be handled dynamically by syncToneEngine
-        
-        return noise;
-    },
-    
-    renderFunction: (noiseData) => {
-        return `
-            <div class="synth-module" data-module-id="${noiseData.id}">
-                <div class="corner-port-output">
-                    <div class="patch-port audio-output" data-port-type="audio-out" data-signal="audio"></div>
-                    <span class="corner-port-label">OUT</span>
-                </div>
-                
-                <div class="module-header">
-                    <h3 class="module-title">NOISE-1</h3>
-                    <div class="module-header-controls">
-                        <button class="bypass-toggle ${noiseData.parameters.bypass ? 'bypassed' : ''}"
-                                data-param="bypass"
-                                data-value="${noiseData.parameters.bypass}">
-                            B
-                        </button>
-                        <button class="delete-module" title="Delete module">×</button>
-                    </div>
-                </div>
-
-                <div class="module-controls">
-                    <div class="control-group">
-                        <select class="noise-type-selector" data-param="type">
-                            <option value="white" ${noiseData.parameters.type === 'white' ? 'selected' : ''}>WHITE</option>
-                            <option value="pink" ${noiseData.parameters.type === 'pink' ? 'selected' : ''}>PINK</option>
-                            <option value="brown" ${noiseData.parameters.type === 'brown' ? 'selected' : ''}>BROWN</option>
+        fd ${type} module with id "${id}"`);
+        fROWN</option>
                         </select>
                         <div class="wave-visual" data-wave-type="${noiseData.parameters.type}-noise"></div>
                     </div>
+                    f
                     
-                    <div class="control-group">
-                        <label class="control-label">VOLUME</label>
-                        <div class="synth-knob" data-param="volume" data-value="${noiseData.parameters.volume}">
-                            <div class="knob-indicator"></div>
-                        </div>
-                        <span class="control-value">${Math.round(noiseData.parameters.volume * 100)}%</span>
-                    </div>
-                    
-                    <div class="control-group">
-                        <label class="control-label">RATE</label>
-                        <div class="synth-knob" data-param="playbackRate" data-value="${noiseData.parameters.playbackRate}">
-                            <div class="knob-indicator"></div>
+                    <div class="control-f-indicator"></div>
                         </div>
                         <span class="control-value">${noiseData.parameters.playbackRate.toFixed(2)}x</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-};
-
-// Register the noise module
-ModuleFactory.register('noise', NoiseModule);
-
-/**
- * ═══════════════════════════════════════════════════════════════════════════════
- * FILTER MODULE DEFINITION
- * ═══════════════════════════════════════════════════════════════════════════════
- */
-
-/**
- * Filter Module - VCF (Voltage Controlled Filter)
- * Shapes timbre with lowpass/highpass/bandpass/notch filtering
+                    </div>ffghpass/bandpass/notch filtering
  */
 const FilterModule = {
     nodeConfig: {
@@ -281,42 +28,7 @@ const FilterModule = {
             frequency: 8000,
             Q: 1,
             bypass: false
-        }
-    },
-    
-    toneFactory: (params) => {
-        const filter = new Tone.Filter({
-            frequency: params.frequency,
-            type: params.type,
-            Q: params.Q
-        });
-        
-        // Bypass will be handled dynamically by syncToneEngine
-        
-        return filter;
-    },
-    
-    renderFunction: (filterData) => {
-        return `
-            <div class="synth-module" data-module-id="${filterData.id}">
-                <div class="corner-port-input">
-                    <div class="patch-port audio-input" data-port-type="audio-in" data-signal="audio"></div>
-                    <span class="corner-port-label">IN</span>
-                </div>
-                
-                <div class="corner-port-output">
-                    <div class="patch-port audio-output" data-port-type="audio-out" data-signal="audio"></div>
-                    <span class="corner-port-label">OUT</span>
-                </div>
-                
-                <div class="module-header">
-                    <h3 class="module-title">VCF-1</h3>
-                    <div class="module-header-controls">
-                        <button class="bypass-toggle ${filterData.parameters.bypass ? 'bypassed' : ''}"
-                                data-param="bypass"
-                                data-value="${filterData.parameters.bypass}">
-                            B
-                        </button>
+        }f
                         <button class="delete-module" title="Delete module">×</button>
                     </div>
                 </div>
@@ -325,22 +37,17 @@ const FilterModule = {
                     <div class="control-group">
                         <select class="filter-type-selector" data-param="type">
                             <option value="lowpass" ${filterData.parameters.type === 'lowpass' ? 'selected' : ''}>LPF</option>
-                            <option value="highpass" ${filterData.parameters.type === 'highpass' ? 'selected' : ''}>HPF</option>
-                            <option value="bandpass" ${filterData.parameters.type === 'bandpass' ? 'selected' : ''}>BPF</option>
-                            <option value="notch" ${filterData.parameters.type === 'notch' ? 'selected' : ''}>NOTCH</option>
-                        </select>
-                        <div class="wave-visual" data-wave-type="${filterData.parameters.type}"></div>
-                    </div>
+                            <option value="highpass" ${filterData.parameters.type === 'highpass' ? 'selected' : ''}>HPF</option>asf
                     
                     <div class="control-group">
-                        <div class="corner-port-input secondary">
-                            <div class="patch-port cv-input" data-port-type="cv-in" data-signal="cv"></div>
+                        <div class="cornera-port-input secondary">
+                            <div class="patch-port cv-inpsut" data-port-type="cv-in" data-signal="cv"></div>
                             <span class="corner-port-label">CV</span>
                         </div>
                         <label class="control-label">FREQ</label>
-                        <div class="synth-knob filter-knob" data-param="frequency" data-value="${filterData.parameters.frequency}">
-                            <div class="knob-indicator"></div>
-                        </div>
+                        <div class="synth-knob filter-knob" data-param="frequency" data-value="${filterData.parameters.ffrequency}">
+                            <div class="knoab-indicator"></div>
+                        </div>s
                         <span class="control-value">${filterData.parameters.frequency}Hz</span>
                     </div>
                     
