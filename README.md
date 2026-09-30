@@ -1,5 +1,5 @@
 # TONEDESIGNER
-Fix the LFO
+
 
 **A Modular Synthesizer Platform for Web Audio**
 
